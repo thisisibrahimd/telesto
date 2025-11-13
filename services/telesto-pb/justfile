@@ -1,0 +1,14 @@
+
+pb_data_dir := "internal/pocketbase/pb_data"
+
+nuke_pb_data:
+    rm -rf {{pb_data_dir}}
+
+pb_start:
+    go run . serve  --dir "{{pb_data_dir}}"
+
+pb_migrate *ARGS:
+    go run . migrate {{ARGS}} --dir "{{pb_data_dir}}"
+
+con_build VERSION:
+    ko build . -L -B -t {{VERSION}}

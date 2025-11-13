@@ -1,0 +1,15 @@
+defaultBaseImage: cgr.dev/chainguard/static
+
+builds:
+- id: main
+  dir: .  # default is .
+  main: ./main.go
+  ldflags:
+  - -s -w
+  - -extldflags "-static"
+  - -X pkg.version.VERSION={{.Env.VERSION}}
+
+
+defaultPlatforms:
+- linux/arm64
+- linux/amd64

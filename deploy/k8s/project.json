@@ -1,0 +1,69 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nrwl/nx/refs/heads/master/packages/nx/schemas/project-schema.json",
+  "name": "k8s",
+  "projectType": "application",
+  "tags": [
+    "scope:k8s",
+    "tool:tanka"
+  ],
+  "targets": {
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tk lint environments/local",
+        "cwd": "deploy/k8s/"
+      }
+    },
+    "diff": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tk diff environments/local",
+        "cwd": "deploy/k8s/"
+      },
+      "configurations": {
+        "crds": {
+          "command": "tk diff environments/local --target 'CustomResourceDefinition/.+' --with-prune --summarize",
+          "cwd": "deploy/k8s/"
+        }
+      },
+      "dependsOn": [
+        {
+          "target": "lint"
+        }
+      ]
+    },
+    "apply-crds": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tk apply environments/local -t 'CustomResourceDefinition/.+' --auto-approve always --validate",
+        "cwd": "deploy/k8s/"
+      },
+      "dependsOn": [
+        {
+          "target": "lint"
+        }
+      ]
+    },
+    "apply": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tk apply environments/local --auto-approve always --validate && tk prune environments/local",
+        "cwd": "deploy/k8s/"
+      },
+      "configurations": {
+        "prune": {
+          "command": "tk prune environments/local",
+          "cwd": "deploy/k8s/"
+        }
+      },
+      "dependsOn": [
+        {
+          "target": "lint"
+        },
+        {
+          "target": "apply-crds"
+        }
+      ]
+    }
+  }
+}

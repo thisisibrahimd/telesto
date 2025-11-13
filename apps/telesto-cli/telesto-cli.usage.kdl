@@ -1,0 +1,18 @@
+# optional metadata
+name "Telesto CLI"        # a friendly name for the CLI
+bin "telesto-cli"          # the name of the binary
+about "cli to manage telesto instances"    # a short description of the CLI
+version "1.0.0"      # the version of the CLI
+author "ibrahim diallo"      # the author of the CLI
+license "MIT"        # license the CLI is released under
+
+# a standard flag
+flag "-f --force"   help="Always do the thing"
+flag "-v --version" help="Print the CLI version"
+flag "-h --help"    help="Print the CLI help"
+
+# a flag that takes a value
+flag "-u --user <user>" help="User to run as"
+
+arg "<dir>"  help="The directory to use" # required positional argument
+arg "[file]" help="The file to read"     # optional positional argument
