@@ -23,7 +23,7 @@ kos:
       "org.opencontainers.image.description": "Extended PocketBase"
       "org.opencontainers.image.created": "{{.Date}}"
       "org.opencontainers.image.name": "telesto-pb"
-      # "org.opencontainers.image.revision": "{{.FullCommit}}"
+      "org.opencontainers.image.revision": "{{.FullCommit}}"
       "org.opencontainers.image.version": "{{.Version}}"
       # "org.opencontainers.image.source": "{{.GitURL}}"
       
