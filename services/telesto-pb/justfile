@@ -10,5 +10,5 @@ pb_start:
 pb_migrate *ARGS:
     go run . migrate {{ARGS}} --dir "{{pb_data_dir}}"
 
-con_build VERSION:
-    ko build . -L -B -t {{VERSION}}
+goreleaser *ARGS:
+    GORELEASER_PREVIOUS_TAG=$(git tag -l "telesto-pb/v*" | choose -f "/" -o / 1 | sort -r | head -2 | tail -1) GORELEASER_CURRENT_TAG=$(git tag -l "telesto-pb/v*" | choose -f "/" -o / 1 | sort -r | head -1) goreleaser {{ARGS}}
