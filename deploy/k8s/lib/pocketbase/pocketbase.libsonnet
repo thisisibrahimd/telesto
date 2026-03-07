@@ -29,19 +29,20 @@ local k = import 'ksonnet-util/kausal.libsonnet';
       // + service.spec.withType('LoadBalancer'),
       ingress: if c.pocketbase.ingress.enabled
       then ingress.new(name=c.pocketbase.name)
-           + ingress.metadata.withAnnotations(c.pocketbase.ingress.rewrite.annotations)
+           // + ingress.metadata.withAnnotations(c.pocketbase.ingress.rewrite.annotations)
            + ingress.spec.withIngressClassName(c.pocketbase.ingress.className)
            + ingress.spec.withRules(
              ingressrule.withHost(c.pocketbase.ingress.host)
              + ingressrule.http.withPaths(
-               httpingresspath.withPath('/pb(/|$)(.*)')
-               + httpingresspath.withPathType('ImplementationSpecific')
+               httpingresspath.withPath('/')
+               + httpingresspath.withPathType('Prefix')
                + httpingresspath.backend.service.withName(c.pocketbase.name)
                + httpingresspath.backend.service.port.withNumber(c.pocketbase.port)
              )
            ),
     },
-    argo_cm_plugin: configmap.new(
+    argo_cm_plugin: if c.pocketbase.argo_cm_plugin.create
+    then configmap.new(
       name=c.pocketbase.argo_cm_plugin.name,
       data={
         token: c.pocketbase.argo_cm_plugin.token,

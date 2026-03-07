@@ -1,0 +1,44 @@
+# Define variables
+tanka_environment_directory := "./environments"
+crd_filter := "--target 'CustomResourceDefinition/.+'"
+containers_file := ".containers"
+
+get-argo-admin-password:
+    kubectl get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d | pbcopy
+
+# # Load images from the .containers file into the kind cluster
+# load-images:
+#     if [ -f "{{containers_file}}" ]; then \
+#         while IFS= read -r image; do \
+#             echo "Loading image: $image"; \
+#             tar_file=$(echo "$image" | tr '/:' '__'); \
+#             podman image save "$image" -o "deploy/$tar_file.tar" && \
+#             kind load image-archive --name "{{kind_cluster_name}}" "deploy/$tar_file.tar"; \
+#             rm "deploy/$tar_file.tar"; \
+#         done < "{{containers_file}}"; \
+#     else \
+#         echo "File {{containers_file}} not found."; \
+#     fi
+
+cpk:
+    sudo cloud-provider-kind    
+
+load-image IMAGE_NAME CLUSTER_NAME:
+    #!/usr/bin/env bash
+    set -euxo pipefail
+    TEMP_TAR=$(mktemp).tar
+    docker save -o "$TEMP_TAR" "{{IMAGE_NAME}}"
+    kind load image-archive "$TEMP_TAR" --name "{{CLUSTER_NAME}}"
+    rm $TEMP_TAR
+
+tk-lint ENVIRONMENT_NAME:
+    tk lint "{{tanka_environment_directory}}/{{ENVIRONMENT_NAME}}"
+
+tk-diff ENVIRONMENT_NAME:
+    tk diff "{{tanka_environment_directory}}/{{ENVIRONMENT_NAME}}" 
+
+tk-apply ENVIRONMENT_NAME:
+    tk apply "{{tanka_environment_directory}}/{{ENVIRONMENT_NAME}}" --auto-approve always && tk prune "{{tanka_environment_directory}}/{{ENVIRONMENT_NAME}}" 
+
+tk-apply-crds ENVIRONMENT_NAME:
+    tk apply "{{tanka_environment_directory}}/{{ENVIRONMENT_NAME}}" --target 'CustomResourceDefinition/.+' --auto-approve always --validate

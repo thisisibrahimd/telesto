@@ -9,16 +9,17 @@
         name: 'pocketbase',
         ingress: {
           enabled: false,
-          className: 'nginx',
-          host: 'localhost',
-          rewrite: {
-            annotations: {
-              'nginx.ingress.kubernetes.io/use-regex': 'true',
-              'nginx.ingress.kubernetes.io/rewrite-target': '/$2',
-            },
-          },
+          className: '',
+          host: 'telesto.localhost',
+          // rewrite: {
+          //   annotations: {
+          //     'nginx.ingress.kubernetes.io/use-regex': 'true',
+          //     'nginx.ingress.kubernetes.io/rewrite-target': '/$2',
+          //   },
+          // },
         },
         argo_cm_plugin: {
+          create: false,
           name: 'pocketbase-argo-cm-plugin-config',
           token: '$telesto.telesto_plugin.token',
           baseUrl: 'http://pocketbase.default.svc.cluster.local.:8080',
@@ -31,7 +32,7 @@
   // again, make sure to use +::
   _images+:: {
     pocketbase: {
-      pocketbase: 'quay.io/telesto/telesto-pb:0.10.0',
+      pocketbase: 'quay.io/telesto/telesto-pb:v0.0.1',
     },
   },
 }

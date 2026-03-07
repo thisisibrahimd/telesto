@@ -1,7 +1,0 @@
-{
-  "$schema": "https://raw.githubusercontent.com/nrwl/nx/refs/heads/master/packages/nx/schemas/project-schema.json",
-  "name": "telesto-pb",
-  "projectType": "application",
-  "tags": [],
-  "targets": {}
-}

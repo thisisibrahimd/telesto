@@ -1,0 +1,9 @@
+
+gen-db-lib:
+    go run ./cmd/gorm/main.go
+
+build:
+    just goreleaser release --auto-snapshot --clean
+
+goreleaser *ARGS:
+    GORELEASER_PREVIOUS_TAG=$(git tag -l "telesto/v*" --sort -refname| choose -f "/" -o / 1 | head -2 | tail -1) GORELEASER_CURRENT_TAG=$(git tag -l "telesto/v*" --sort -refname | choose -f "/" -o / 1 | head -1) goreleaser {{ARGS}}
