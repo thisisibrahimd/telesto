@@ -1,9 +1,17 @@
+kind_cluster := "telesto-single-cluster"
 
 gen-db-lib:
     go run ./cmd/gorm/main.go
 
 build:
-    just goreleaser release --auto-snapshot --clean
+    just goreleaser build --clean
+
+build-local:
+    just goreleaser release --snapshot --clean
+    kind load docker-image quay.io/telesto/telesto:$(jq -r .version dist/metadata.json) -n {{kind_cluster}}
+
+get-current-version:
+    jq -r .version dist/metadata.json
 
 goreleaser *ARGS:
     GORELEASER_PREVIOUS_TAG=$(git tag -l "telesto/v*" --sort -refname| choose -f "/" -o / 1 | head -2 | tail -1) GORELEASER_CURRENT_TAG=$(git tag -l "telesto/v*" --sort -refname | choose -f "/" -o / 1 | head -1) goreleaser {{ARGS}}

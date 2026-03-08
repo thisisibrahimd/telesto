@@ -35,11 +35,19 @@ archives:
       {{- else }}{{ .Arch }}{{ end }}
       {{- if .Arm }}v{{ .Arm }}{{ end }}
 
+snapshot:
+  version_template: "{{ incpatch .Version }}-alpha"
+
 kos:
   - platforms:
       - linux/amd64
       - linux/arm64
     main: ./cmd/telesto
+    tags:
+      - "{{.Version}}"
+    bare: true
+    preserve_import_paths: false
+    base_import_paths: false
     repositories:
       - quay.io/telesto/telesto
     local_domain: quay.io/telesto/telesto
