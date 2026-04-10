@@ -77,7 +77,7 @@ start-openobserve:
 
 # build process
 build:
-    just goreleaser build --clean
+    just goreleaser release --clean --snapshot
 
 build-local:
     just goreleaser release --snapshot --clean

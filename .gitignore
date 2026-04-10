@@ -9,6 +9,7 @@ pd_data
 .github/instructions/nx.instructions.md
 *.kubeconfig.yaml
 
+dist/*
 node_modules/
 openobserve
 deploy/charts/**

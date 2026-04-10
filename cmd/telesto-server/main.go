@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	_ "github.com/golang-migrate/migrate/v4/database/rqlite"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/spf13/cobra"
 	"github.com/thisisibrahimd/telesto/internal/server/cli"
 )
@@ -19,7 +17,7 @@ func main() {
 	ctx := context.Background()
 
 	// register commands
-	telestoCmd.AddCommand(cli.NewMigrateCommand())
+	// telestoCmd.AddCommand(cli.NewMigrateCommand())
 	telestoCmd.AddCommand(cli.NewServeCommand())
 
 	// launch command
