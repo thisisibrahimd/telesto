@@ -1,0 +1,258 @@
+package web
+
+import (
+	"log/slog"
+	"net/http"
+	"regexp"
+	"slices"
+
+	"github.com/gorilla/schema"
+	ory "github.com/ory/kratos-client-go/v26"
+	"github.com/thisisibrahimd/telesto/internal/server/middlewares"
+	"github.com/thisisibrahimd/telesto/internal/storage"
+	"github.com/thisisibrahimd/telesto/internal/storage/model"
+	"github.com/thisisibrahimd/telesto/templates/pages"
+	"github.com/thisisibrahimd/telesto/templates/pages/otelcols"
+)
+
+var _ WebServerInterface = (*WebServer)(nil)
+
+type WebServerConfig struct {
+	OryAPIClient *ory.APIClient
+	Storage      *storage.Storage
+}
+
+type WebServer struct {
+	oryClient *ory.APIClient
+	storage   *storage.Storage
+	decoder   *schema.Decoder
+}
+
+// CreateOtelcolExec implements [WebServerInterface].
+func (s *WebServer) CreateOtelcolExec(w http.ResponseWriter, r *http.Request) {
+	userId := middlewares.GetUserID(r.Context())
+	err := r.ParseForm()
+	if err != nil {
+		return
+	}
+
+	var newOtelcol model.Otelcol
+
+	if err := s.decoder.Decode(&newOtelcol, r.Form); err != nil {
+		return
+	}
+	if err := s.storage.CreateOtelcolByUserId(r.Context(), userId, &newOtelcol); err != nil {
+		return
+	}
+	http.Redirect(w, r, "/otelcols/"+newOtelcol.ID, http.StatusSeeOther)
+}
+
+// DeleteOtelcol implements [WebServerInterface].
+func (s *WebServer) DeleteOtelcol(w http.ResponseWriter, r *http.Request) {
+	userId := middlewares.GetUserID(r.Context())
+	otelcolId := r.PathValue("id")
+	if otelcolId == "" {
+		return
+	}
+
+	if err := s.storage.DeleteOtelcolByUserId(r.Context(), userId, otelcolId); err != nil {
+		return
+	}
+
+	http.Redirect(w, r, "/otelcols", http.StatusSeeOther)
+}
+
+// UpdateOtelcolExec implements [WebServerInterface].
+func (s *WebServer) UpdateOtelcolExec(w http.ResponseWriter, r *http.Request) {
+	userId := middlewares.GetUserID(r.Context())
+	otelcolId := r.PathValue("id")
+	if otelcolId == "" {
+		return
+	}
+	err := r.ParseForm()
+	if err != nil {
+		return
+	}
+	var updatedOtelcol model.Otelcol
+	if err := s.decoder.Decode(&updatedOtelcol, r.Form); err != nil {
+		return
+	}
+
+	if err := s.storage.UpdateOtelcolByUserId(r.Context(), userId, otelcolId, &updatedOtelcol); err != nil {
+		return
+	}
+	http.Redirect(w, r, "/otelcols/"+otelcolId, http.StatusSeeOther)
+}
+
+// CreateOtelcol implements [WebServerInterface].
+func (s *WebServer) CreateOtelcol(w http.ResponseWriter, r *http.Request) {
+	otelcols.New().Render(r.Context(), w)
+}
+
+// GetOtelcol implements [WebServerInterface].
+func (s *WebServer) GetOtelcol(w http.ResponseWriter, r *http.Request) {
+	userId := middlewares.GetUserID(r.Context())
+	otelcolId := r.PathValue("id")
+	if otelcolId == "" {
+		return
+	}
+
+	otelcol, _ := s.storage.GetOtelcolByUserId(r.Context(), userId, otelcolId)
+
+	otelcols.Show(*convertOtelcol(otelcol)).Render(r.Context(), w)
+}
+
+// ListOtelcols implements [WebServerInterface].
+func (s *WebServer) ListOtelcols(w http.ResponseWriter, r *http.Request) {
+	userId := middlewares.GetUserID(r.Context())
+	userOtelcols, err := s.storage.GetOtelcolsByUserId(r.Context(), userId)
+	if err != nil {
+		slog.Error("", slog.Any("error", err))
+	}
+
+	otelcolsModels := make([]*otelcols.OtelcolModel, 0)
+	for _, oc := range userOtelcols {
+		otelcolsModels = append(otelcolsModels, convertOtelcol(oc))
+	}
+
+	otelcols.Index(otelcols.OtelcolsViewModel{Otelcols: otelcolsModels}).Render(r.Context(), w)
+}
+
+// UpdateOtelcol implements [WebServerInterface].
+func (s *WebServer) UpdateOtelcol(w http.ResponseWriter, r *http.Request) {
+	userId := middlewares.GetUserID(r.Context())
+	otelcolId := r.PathValue("id")
+	if otelcolId == "" {
+		return
+	}
+	otelcol, _ := s.storage.GetOtelcolByUserId(r.Context(), userId, otelcolId)
+
+	otelcols.Edit(*convertOtelcol(otelcol)).Render(r.Context(), w)
+}
+
+func convertOtelcol(o *model.Otelcol) *otelcols.OtelcolModel {
+	return &otelcols.OtelcolModel{
+		Id:   o.ID,
+		Name: o.Name,
+	}
+}
+
+// Index implements [WebServerInterface].
+func (s *WebServer) Index(w http.ResponseWriter, r *http.Request) {
+	pages.Index().Render(r.Context(), w)
+}
+
+// Login implements [WebServerInterface].
+func (s *WebServer) Login(w http.ResponseWriter, r *http.Request) {
+	flowParam := r.URL.Query().Get("flow")
+	if flowParam == "" {
+		slog.Error("failed to get login flow id")
+		w.Header().Add("Location", "http://localhost:4433/self-service/login/browser")
+		w.WriteHeader(http.StatusSeeOther)
+		return
+	}
+
+	csrfCookieIndex := slices.IndexFunc(r.Cookies(), func(c *http.Cookie) bool { return regexp.MustCompile(`^csrf_token_`).MatchString(c.Name) })
+	if csrfCookieIndex == -1 {
+		slog.Error("failed to get csrf cookie")
+		w.Header().Add("Location", "http://localhost:4433/self-service/login/browser")
+		w.WriteHeader(http.StatusSeeOther)
+		return
+	}
+
+	csrfCookie := r.Cookies()[csrfCookieIndex]
+	if err := csrfCookie.Valid(); err != nil {
+		slog.Error("failed to get csrf cookie")
+		w.Header().Add("Location", "http://localhost:4433/self-service/login/browser")
+		w.WriteHeader(http.StatusSeeOther)
+		return
+	}
+
+	getLoginFlow, getLoginFlowRes, err := s.oryClient.FrontendAPI.GetLoginFlow(r.Context()).Id(flowParam).Cookie(csrfCookie.String()).Execute()
+	if err != nil {
+		switch getLoginFlowRes.StatusCode {
+		case http.StatusNotFound:
+			w.Header().Add("Location", "http://localhost:4433/self-service/login/browser")
+			w.WriteHeader(http.StatusSeeOther)
+			return
+		default:
+			slog.Error("failed to get login flow info", slog.Any("error", err))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+
+	pages.Login(getLoginFlow.Ui).Render(r.Context(), w)
+}
+
+// Register implements [WebServerInterface].
+func (s *WebServer) Register(w http.ResponseWriter, r *http.Request) {
+	flowParam := r.URL.Query().Get("flow")
+	if flowParam == "" {
+		http.Redirect(w, r, "http://localhost:4433/self-server/registration/browser", http.StatusSeeOther)
+		return
+	}
+
+	csrfCookieIndex := slices.IndexFunc(r.Cookies(), func(c *http.Cookie) bool { return regexp.MustCompile(`^csrf_token_`).MatchString(c.Name) })
+	if csrfCookieIndex == -1 {
+		http.Redirect(w, r, "http://localhost:4433/self-server/registration/browser", http.StatusSeeOther)
+		return
+	}
+
+	csrfCookie := r.Cookies()[csrfCookieIndex]
+	if err := csrfCookie.Valid(); err != nil {
+		http.Redirect(w, r, "http://localhost:4433/self-server/registration/browser", http.StatusSeeOther)
+		return
+	}
+
+	getRegisterFlow, getRegisterFlowRes, err := s.oryClient.FrontendAPI.GetRegistrationFlow(r.Context()).Id(flowParam).Cookie(csrfCookie.String()).Execute()
+	if err != nil {
+		switch getRegisterFlowRes.StatusCode {
+		case http.StatusNotFound:
+			http.Redirect(w, r, "http://localhost:4433/self-server/registration/browser", http.StatusSeeOther)
+			return
+		default:
+			slog.Error("failed to get login flow info", slog.Any("error", err))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+
+	pages.Register(getRegisterFlow.Ui).Render(r.Context(), w)
+}
+
+// Logout implements [WebServerInterface].
+func (s *WebServer) Logout(w http.ResponseWriter, r *http.Request) {
+	createBrowserLogoutFlow, createBrowserLogoutFlowRes, err := s.oryClient.FrontendAPI.CreateBrowserLogoutFlow(r.Context()).Cookie(r.Header.Get("Cookie")).Execute()
+	if err != nil {
+		if createBrowserLogoutFlowRes != nil {
+			switch createBrowserLogoutFlowRes.StatusCode {
+			case http.StatusNotFound:
+				w.Header().Add("Location", "http://localhost:9000/")
+				w.WriteHeader(http.StatusSeeOther)
+				return
+			default:
+				slog.Error("failed to get logout flow info", slog.Any("error", err))
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+		} else {
+			slog.Error("failed to get logout flow info", slog.Any("error", err))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+
+	w.Header().Add("Location", createBrowserLogoutFlow.LogoutUrl)
+	w.WriteHeader(http.StatusPermanentRedirect)
+}
+
+func NewWebServer(cfg *WebServerConfig) WebServerInterface {
+	s := &WebServer{}
+
+	s.oryClient = cfg.OryAPIClient
+	s.storage = cfg.Storage
+	s.decoder = schema.NewDecoder()
+
+	return s
+}

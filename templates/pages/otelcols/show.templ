@@ -1,0 +1,21 @@
+package otelcols
+
+import "github.com/thisisibrahimd/telesto/templates/layouts"
+
+type OtelcolModel struct {
+	Id   string `json:"id"`
+	Name string `json:"name"`
+}
+
+templ Show(otelcol OtelcolModel) {
+	@layouts.Main("Telesto | Otelcols | New") {
+		<h2>Otelcol</h2>
+		<ul>
+			<li><a href="/otelcols">Back to Otelcols</a></li>
+		</ul>
+		<p>id: { otelcol.Id } </p>
+		<p>name: { otelcol.Name } </p>
+		<a href={ "/otelcols/edit/" + otelcol.Id }>edit</a>
+		<button>delete</button>
+	}
+}

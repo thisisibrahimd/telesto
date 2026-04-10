@@ -1,0 +1,21 @@
+package otelcols
+
+import "github.com/thisisibrahimd/telesto/templates/layouts"
+
+type OtelcolEditModel struct {
+	Name string `json:"name"`
+}
+
+templ Edit(otelcol OtelcolModel) {
+	@layouts.Main("Telesto | Otelcols | Edit") {
+		<h2>Edit</h2>
+		<ul>
+			<li><a href="/otelcols">Back to Otelcols</a></li>
+		</ul>
+		<form hx-put={ "/otelcols/edit/" + otelcol.Id } hx-target="body">
+			<label for="name">Name</label>
+			<input type="text" id="name" name="name" placeholder="Name"/>
+			<input type="submit" value="Save"/>
+		</form>
+	}
+}

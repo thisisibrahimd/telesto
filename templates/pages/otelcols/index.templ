@@ -1,0 +1,30 @@
+package otelcols
+
+import "github.com/thisisibrahimd/telesto/templates/layouts"
+
+type OtelcolsViewModel struct {
+	Otelcols []*OtelcolModel
+}
+
+templ Index(model OtelcolsViewModel) {
+	@layouts.Main("Telesto | Otelcols") {
+		<h2>Your otelcols</h2>
+		<table>
+			<tr>
+				<th>ID</th>
+				<th>Name</th>
+				<th>GO</th>
+				<th>Edit</th>
+			</tr>
+		for _, o := range model.Otelcols {
+			<tr>
+				<td>{ o.Id }</td>
+				<td>{ o.Name }</td>
+				<td><a href={ "/otelcols/" + o.Id }><span>➡️</span></a></td>
+				<td><a href={ "/otelcols/edit/" + o.Id }><span>🔨</span></a></td>
+			</tr>
+		}
+		</table>
+		<a href="/otelcols/new">Create new</a>
+	}
+}

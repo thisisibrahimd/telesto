@@ -1,0 +1,127 @@
+openapi: 3.0.0
+info:
+  title: Authboss JSON API
+  description: OpenAPI specification for an Authboss-powered authentication system using JSON bodies.
+  version: 1.0.0
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: authboss_session # Default session cookie name
+  
+  schemas:
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties: 
+        username:
+          type: string
+        password:
+          type: string
+    RegisterRequest:
+      type: object
+      required: [username, password, confirm_password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          format: password
+        confirm_password:
+          type: string
+          format: password
+    GenericAuthResponse:
+      type: object
+      required: 
+        - status
+      properties: 
+        status:
+          type: string
+        location:
+          type: string
+        message:
+          type: string
+        error:
+          type: string
+
+paths:
+  /auth/login:
+    get:
+      summary: Start the login process
+      tags: [auth]
+      operationId: start-login
+      responses:
+        '200':
+          description: Successfully started the login process
+          content: 
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericAuthResponse' }
+    post:
+      summary: Log in a user and complete the login process
+      operationId: complete-login
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: Not authenticated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericAuthResponse' }
+        '307':
+          description: Successfully authenticated and being redirected
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericAuthResponse' }
+
+
+  /auth/logout:
+    post:
+      summary: Log out the current user
+      tags: [auth]
+      security:
+        - cookieAuth: []
+      responses:
+        '307':
+          description: Successfully logged out
+          content: 
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericAuthResponse' }
+
+  /auth/register:
+    get:
+      summary: Start egistration
+      tags: [auth]
+      operationId: start-registeration
+      responses:
+        '200':
+          description: Successfully started the login process
+          content: 
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericAuthResponse' }
+    post:
+      summary: Register a new user
+      tags: [auth]
+      operationId: complete-registeration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterRequest'}
+      responses:
+        '200':
+          description: Not registered
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericAuthResponse'}
+        '307':
+          description: Successfully registered and being redirected
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenericAuthResponse' }
+

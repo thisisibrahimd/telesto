@@ -1,0 +1,14 @@
+package pages
+
+import "github.com/ory/kratos-client-go/v26"
+import "github.com/thisisibrahimd/telesto/templates/layouts"
+import "github.com/thisisibrahimd/telesto/templates/components"
+
+templ Login(form client.UiContainer) {
+	@layouts.Auth("Login") {
+		<div class="">
+			<h1>Login</h1>
+			@components.AuthForm(form)
+		</div>
+	}
+}

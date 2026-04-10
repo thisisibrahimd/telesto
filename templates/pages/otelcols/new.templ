@@ -1,0 +1,22 @@
+package otelcols
+
+import "github.com/thisisibrahimd/telesto/templates/layouts"
+
+type OtelcolNewModel struct {
+	Name string `json:"name"`
+}
+
+templ New() {
+	@layouts.Main("Telesto | Otelcols | New") {
+		<h2>Create a new otelcol</h2>
+		<ul>
+			<li><a href="/otelcols">Back to Otelcols</a></li>
+		</ul>
+		<form method="POST" action="/otelcols/new">
+      <label for="name">Name</label>
+      <input type="text" id="name" name="name" placeholder="Name" />
+    <input type="submit" value="Save"/>
+
+		</form>
+	}
+}

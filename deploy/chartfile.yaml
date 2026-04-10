@@ -1,0 +1,46 @@
+directory: charts
+repositories:
+- name: stable
+  url: https://charts.helm.sh/stable
+- name: grafana
+  url: https://grafana.github.io/helm-charts
+- name: nginx
+  url: https://kubernetes.github.io/ingress-nginx
+- name: open-telemetry
+  url: https://open-telemetry.github.io/opentelemetry-helm-charts
+- name: jetstack
+  url: https://charts.jetstack.io
+- name: argo
+  url: https://argoproj.github.io/argo-helm
+- name: infisical
+  url: https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/
+- name: external-dns
+  url: https://kubernetes-sigs.github.io/external-dns/
+- name: coredns
+  url: https://coredns.github.io/helm
+- name: rqlite
+  url: https://rqlite.github.io/helm-charts
+requires:
+- chart: nginx/ingress-nginx
+  version: 4.14.0
+- chart: open-telemetry/opentelemetry-collector
+  version: 0.138.1
+- chart: jetstack/cert-manager
+  version: v1.19.1
+- chart: external-dns/external-dns
+  version: 1.20.0
+- chart: argo/argo-cd
+  version: 9.0.6
+- chart: infisical/infisical-standalone
+  version: 1.7.2
+- chart: grafana/tempo
+  version: 1.24.0
+- chart: grafana/grafana
+  version: 10.1.5
+- chart: grafana/loki
+  version: 6.46.0
+- chart: coredns/coredns
+  version: 1.45.2
+- chart: rqlite/rqlite
+  version: 2.0.0
+version: 1

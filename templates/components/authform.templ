@@ -1,0 +1,88 @@
+package components
+
+import "github.com/ory/kratos-client-go/v26"
+
+templ AuthForm(form client.UiContainer) {
+	<div class="p-6">
+		<form method={ form.Method } action={ form.Action } class="">
+			for _, message := range form.Messages {
+				<span class="text-sm red">{ message.Text }</span>
+			}
+			<fieldset class="fieldset">
+				for _, node := range form.Nodes {
+					switch node.Type {
+						case "input":
+							switch node.Attributes.UiNodeInputAttributes.Type {
+								case "hidden":
+										<input
+											name={ node.Attributes.UiNodeInputAttributes.GetName() }
+											type={ node.Attributes.UiNodeInputAttributes.GetType() }
+											if node.Attributes.UiNodeInputAttributes.HasValue() {
+												value={ node.Attributes.UiNodeInputAttributes.GetValue().(string) }
+											}
+										/>
+								case "checkbox":
+									<div>
+										<label for={ node.Meta.Label.GetId() } class="label">
+											{ node.Meta.Label.GetText() }
+										</label>
+										<input
+											class="input"
+											name={ node.Attributes.UiNodeInputAttributes.GetName() }
+											type={ node.Attributes.UiNodeInputAttributes.GetType() }
+											if node.Attributes.UiNodeInputAttributes.HasValue() {
+												value={ node.Attributes.UiNodeInputAttributes.GetValue().(string) }
+											}
+										/>
+									</div>
+								case "button":
+									<button
+										class="btn"
+										name={ node.Attributes.UiNodeInputAttributes.GetName() }
+										type={ node.Attributes.UiNodeInputAttributes.GetType() }
+										onclick={ templ.ComponentScript{Call: node.Attributes.UiNodeInputAttributes.GetOnclickTrigger() + "()"} }
+										if node.Attributes.UiNodeInputAttributes.HasValue() {
+											value={ node.Attributes.UiNodeInputAttributes.GetValue().(string) }
+										}
+									>{ node.Meta.Label.GetText() }</button>
+								case "submit":
+									<button
+										class="btn"
+										name={ node.Attributes.UiNodeInputAttributes.GetName() }
+										type={ node.Attributes.UiNodeInputAttributes.GetType() }
+										if node.Attributes.UiNodeInputAttributes.HasValue() {
+											value={ node.Attributes.UiNodeInputAttributes.GetValue().(string) }
+										}
+									>{ node.Meta.Label.GetText() }</button>
+								default:
+									<div>
+										if node.Attributes.UiNodeInputAttributes.GetType() != "hidden" {
+											<label for={ node.Meta.Label.GetId() } class="label">
+												{ node.Meta.Label.GetText() }
+											</label>
+											<input
+												class="input"
+												name={ node.Attributes.UiNodeInputAttributes.GetName() }
+												type={ node.Attributes.UiNodeInputAttributes.GetType() }
+												if node.Attributes.UiNodeInputAttributes.HasValue() {
+													value={ node.Attributes.UiNodeInputAttributes.GetValue().(string) }
+												}
+											/>
+										}
+									</div>
+							}
+						case "script":
+							<script async={ node.Attributes.UiNodeScriptAttributes.GetAsync() } src={ node.Attributes.UiNodeScriptAttributes.GetSrc() } type={ node.Attributes.UiNodeScriptAttributes.GetType() } referrerpolicy={ node.Attributes.UiNodeScriptAttributes.GetReferrerpolicy() } crossorigin={ node.Attributes.UiNodeScriptAttributes.GetCrossorigin() } integrity={ node.Attributes.UiNodeScriptAttributes.GetIntegrity() } id={ node.Attributes.UiNodeScriptAttributes.GetId() }></script>
+						default:
+							<p>{ node.Type }</p>
+					}
+					if _, ok := node.GetMessagesOk(); ok {
+						for _, message := range node.GetMessages() {
+							<span class="text-red-500">{ message.Text }</span>
+						}
+					}
+				}
+			</fieldset>
+		</form>
+	</div>
+}

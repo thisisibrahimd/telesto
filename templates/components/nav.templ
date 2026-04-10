@@ -1,0 +1,32 @@
+package components
+
+import "github.com/thisisibrahimd/telesto/internal/server/middlewares"
+
+templ Nav() {
+	<nav class="pure-menu pure-menu-horizontal">
+		<span class="pure-menu-heading">
+			<a href="/">Telesto</a>
+		</span>
+		<ul class="pure-menu-list">
+			if !middlewares.GetSessionIsActive(ctx) {
+				<li class="pure-menu-item">
+					<a href="/login">Login</a>
+				</li>
+				<li class="pure-menu-item">
+					<a href="/register">Register</a>
+				</li>
+			}
+			if middlewares.GetSessionIsActive(ctx) {
+				<li class="pure-menu-item">
+					Hello { middlewares.GetUsername(ctx) }!
+				</li>
+				<li class="pure-menu-item">
+					<a href="/otelcols">Otelcols</a>
+				</li>
+				<li class="pure-menu-item">
+					<a href="/logout">Logout</a>
+				</li>
+			}
+		</ul>
+	</nav>
+}

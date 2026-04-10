@@ -1,0 +1,49 @@
+{{ define "property-info" }}
+	// {{ .Type }} prop
+	// path {{ .AbsolutePath }}
+	// additional: {{ .AdditionalProp }}
+{{ end }}
+
+{{ define "property-wither" }}
+	{{- if .Generate -}}
+		{{- if .GenerateArray -}}
+		    with{{ default .Name .FunctionName | title }}({{ default .Name .CustomJsonValueName }}): {
+			{{- range .JsonPath }} {{ . }}+: { {{ end -}}
+			{{ default .Name .CustomJsonKey }}: if std.isArray(v={{ default .Name .CustomJsonValueName }}) then {{ default .Name .CustomJsonValueName }} else [{{ default .Name .CustomJsonValueName }}]
+			{{- range .JsonPath }} } {{ end -}}
+			},
+		    with{{ default .Name .FunctionName | title }}Mixin({{ default .Name .CustomJsonValueName }}): {
+			{{- range .JsonPath }} {{ . }}+: { {{ end -}}
+			{{ default .Name .CustomJsonKey }}+: if std.isArray(v={{ default .Name .CustomJsonValueName }}) then {{ default .Name .CustomJsonValueName }} else [{{ default .Name .CustomJsonValueName }}]
+			{{- range .JsonPath }} } {{ end -}}
+			},
+		{{- else -}}
+		    with{{ default .Name .FunctionName | title }}({{ default .Name .CustomJsonValueName }}): {
+			{{- range .JsonPath }} {{ . }}+: { {{ end -}}
+			{{ default .Name .CustomJsonKey }}: {{ default .Name .CustomJsonValueName }}
+			{{- range .JsonPath }} } {{ end -}}
+			},
+		{{- end -}}
+	{{- end -}}
+{{ end }}
+
+{{ define "sub-properties" }}
+ 	{{ if or (not .Generate) (.GenerateSubProps) -}}
+	{{.Name}}: {
+		{{- range .Properties -}}
+			{{- template "property-wither" . -}}
+			{{- template "sub-properties" . -}}
+	    {{- end -}}
+	},
+	{{- end }}
+{{ end }}
+
+{
+	{{ .Name }}: {
+	{{- range .Properties -}}
+		{{- template "property-wither" . -}}
+		{{- template "sub-properties" . -}}
+    {{- end -}}
+	},
+}
+

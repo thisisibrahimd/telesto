@@ -10,3 +10,6 @@ pd_data
 *.kubeconfig.yaml
 
 node_modules/
+openobserve
+deploy/charts/**
+deploy/**/vendor/**

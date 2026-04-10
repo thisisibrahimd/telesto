@@ -1,0 +1,41 @@
+[
+  {
+    "schema_id": "person",
+    "traits": {
+      "username": "john"
+    },
+    "credentials": {
+      "password": {
+        "config": {
+          "password": "password"
+        }
+      }
+    }
+  },
+  {
+    "schema_id": "person",
+    "traits": {
+      "username": "alice"
+    },
+    "credentials": {
+      "password": {
+        "config": {
+          "password": "password"
+        }
+      }
+    }
+  },
+  {
+    "schema_id": "person",
+    "traits": {
+      "username": "bob"
+    },
+    "credentials": {
+      "password": {
+        "config": {
+          "password": "password"
+        }
+      }
+    }
+  }
+]

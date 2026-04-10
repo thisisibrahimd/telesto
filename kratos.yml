@@ -1,0 +1,65 @@
+
+serve:
+  public:
+    base_url: http://localhost:4433/ 
+    cors:
+      enabled: true
+      # Replace with your actual frontend URL (no trailing slash)
+      allowed_origins:
+        - http://localhost:9000
+      allowed_methods:
+        - POST
+        - GET
+        - PUT
+        - PATCH
+        - DELETE
+      allowed_headers:
+        - Authorization
+        - Content-Type
+        - Cookie
+      exposed_headers:
+        - Content-Type
+        - Set-Cookie
+      allow_credentials: true
+  admin:
+    base_url: http://localhost:4434/
+
+version: v0.5.0-alpha.1
+log:
+  level: warning
+  leak_sensitive_values: false
+  redaction_text: ""
+selfservice:
+  default_browser_return_url: http://localhost:9000
+  allowed_return_urls:
+    - http://localhost:9000
+  flows:
+    login:
+      ui_url: http://localhost:9000/login
+    registration:
+      enabled: true
+      ui_url: http://localhost:9000/register
+    error:
+      ui_url: http://localhost:9000/error
+        
+  methods:
+    passkey:
+      enabled: true
+      config:
+        rp:
+          display_name: Telesto
+          # Set 'id' to the top-level domain.
+          id: localhost
+          # Set 'origin' to the exact URL of the page that prompts the user to use WebAuthn. You must include the scheme, host, and port.
+          origins:
+            - http://localhost:9000
+
+dsn: "memory"
+
+identity:
+  default_schema_id: "person"
+  schemas:
+    - id: person
+      url: file://./identity.schema.json
+
+dev: true
