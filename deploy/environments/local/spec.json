@@ -9,7 +9,7 @@
     "injectLabels": true,
     "applyStrategy": "server",
     "contextNames": [
-      "kind-telesto-single-cluster"
+      "kind-telesto-local-cluster"
     ],
     "resourceDefaults": {},
     "expectVersions": {}

@@ -1,8 +1,0 @@
-
-create-cluster NAME:
-    kind create cluster --config {{NAME}}/{{NAME}}.yaml --kubeconfig {{NAME}}/{{NAME}}.kubeconfig.yaml
-download-config NAME:
-    kind get config --name {{NAME}}
-
-delete-cluster NAME:
-    kind delete cluster --name {{NAME}}

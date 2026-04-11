@@ -1,4 +1,7 @@
-kind_cluster := "telesto-single-cluster"
+# Define variables
+kind_cluster := "telesto-local-cluster"
+tanka_environment_directory := "./deploy/environments"
+crd_filter := "--target 'CustomResourceDefinition/.+'"
 
 start-live:
     reflex -r '.go$' -R '^templates/' -s -- just start
@@ -89,3 +92,40 @@ get-current-version:
 goreleaser *ARGS:
     GORELEASER_PREVIOUS_TAG=$(git tag -l "telesto/v*" --sort -refname| choose -f "/" -o / 1 | head -2 | tail -1) GORELEASER_CURRENT_TAG=$(git tag -l "telesto/v*" --sort -refname | choose -f "/" -o / 1 | head -1) goreleaser {{ARGS}}
 
+# deploy
+get-argo-admin-password:
+    kubectl get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d | pbcopy
+
+get-hosts:
+     kubectl get ing -A -o json | jq -r '.items[] | "\(.status.loadBalancer.ingress[0].ip)\t\(.spec.rules[0].host)"'
+
+download-hosts:
+    just get-hosts > ./.etchosts
+
+cpk:
+    sudo cloud-provider-kind
+
+sync-ing-to-hosts:
+    just download-hosts
+    sudo hostctl add telesto -f .etchosts
+
+tk-lint ENVIRONMENT_NAME:
+    tk lint "{{tanka_environment_directory}}/{{ENVIRONMENT_NAME}}"
+
+tk-diff ENVIRONMENT_NAME:
+    tk diff "{{tanka_environment_directory}}/{{ENVIRONMENT_NAME}}" 
+
+tk-apply ENVIRONMENT_NAME:
+    tk apply "{{tanka_environment_directory}}/{{ENVIRONMENT_NAME}}" --auto-approve always && tk prune "{{tanka_environment_directory}}/{{ENVIRONMENT_NAME}}" 
+
+tk-apply-crds ENVIRONMENT_NAME:
+    tk apply "{{tanka_environment_directory}}/{{ENVIRONMENT_NAME}}" --target 'CustomResourceDefinition/.+' --auto-approve always --validate
+
+create-local-cluster:
+    kind create cluster --config ./deploy/{{kind_cluster}}/{{kind_cluster}}.yaml --kubeconfig ./deploy/{{kind_cluster}}/{{kind_cluster}}.kubeconfig.yaml
+
+download-config:
+    kind get kubeconfig --name {{kind_cluster}}
+
+delete-local-cluster:
+    kind delete cluster --name {{kind_cluster}}

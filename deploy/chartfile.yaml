@@ -20,6 +20,10 @@ repositories:
   url: https://coredns.github.io/helm
 - name: rqlite
   url: https://rqlite.github.io/helm-charts
+- name: ory
+  url: https://k8s.ory.com/helm/charts
+- name: cnpg
+  url: https://cloudnative-pg.github.io/charts
 requires:
 - chart: nginx/ingress-nginx
   version: 4.14.0
@@ -43,4 +47,12 @@ requires:
   version: 1.45.2
 - chart: rqlite/rqlite
   version: 2.0.0
+- chart: ory/kratos
+  version: 0.61.1
+- chart: ory/kratos-selfservice-ui-node
+  version: 0.61.1
+- chart: cnpg/cloudnative-pg
+  version: 0.28.0
+- chart: cnpg/cluster
+  version: 0.6.0
 version: 1

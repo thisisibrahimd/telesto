@@ -56,7 +56,7 @@ local k = import 'ksonnet-util/kausal.libsonnet';
   //                  + job.spec.template.spec.withVolumesMixin([
   //                    volume.fromConfigMap('telesto-config', 'telesto-config'),
   //                  ]),
-  // },
+  },
   withImage(image): {
     container+:
       k.core.v1.container.withImage(image),
