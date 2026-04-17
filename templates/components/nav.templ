@@ -3,30 +3,22 @@ package components
 import "github.com/thisisibrahimd/telesto/internal/server/middlewares"
 
 templ Nav() {
-	<nav class="pure-menu pure-menu-horizontal">
-		<span class="pure-menu-heading">
-			<a href="/">Telesto</a>
-		</span>
-		<ul class="pure-menu-list">
-			if !middlewares.GetSessionIsActive(ctx) {
-				<li class="pure-menu-item">
-					<a href="/login">Login</a>
-				</li>
-				<li class="pure-menu-item">
-					<a href="/register">Register</a>
-				</li>
-			}
-			if middlewares.GetSessionIsActive(ctx) {
-				<li class="pure-menu-item">
-					Hello { middlewares.GetUsername(ctx) }!
-				</li>
-				<li class="pure-menu-item">
-					<a href="/otelcols">Otelcols</a>
-				</li>
-				<li class="pure-menu-item">
-					<a href="/logout">Logout</a>
-				</li>
-			}
-		</ul>
+	<nav class="bg-white shadow-sm">
+		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+			<div class="flex items-center justify-between h-16">
+				<a href="/" class="text-xl font-bold text-indigo-600">Telesto</a>
+				<div class="flex items-center space-x-4">
+					if !middlewares.GetSessionIsActive(ctx) {
+						<a href="/login" class="text-sm font-medium text-gray-600 hover:text-indigo-600 transition-colors">Login</a>
+						<a href="/register" class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors">Register</a>
+					}
+					if middlewares.GetSessionIsActive(ctx) {
+						<span class="text-sm text-gray-500">Hello, { middlewares.GetUsername(ctx) }</span>
+						<a href="/otelcols" class="text-sm font-medium text-gray-600 hover:text-indigo-600 transition-colors">Otelcols</a>
+						<a href="/logout" class="text-sm font-medium text-gray-600 hover:text-red-600 transition-colors">Logout</a>
+					}
+				</div>
+			</div>
+		</div>
 	</nav>
 }
