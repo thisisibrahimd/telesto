@@ -6,7 +6,7 @@ local identitySchema = importstr '../../../identity.schema.json';
 
 {
   t: t.new('telesto-app')
-     + t.withImage('quay.io/telesto/telesto:0.0.4-alpha'),
+     + t.withImage('quay.io/telesto/telesto:0.0.5-alpha-amd64'),
   rqlite: helm.template('db', '../../charts/rqlite', {
     namespace: 'default',
     values: {

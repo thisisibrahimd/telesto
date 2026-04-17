@@ -38,19 +38,36 @@ archives:
 snapshot:
   version_template: "{{ incpatch .Version }}-alpha"
 
-kos:
-  - platforms:
-      - linux/amd64
-      - linux/arm64
-    main: ./cmd/telesto-server
+dockers_v2:
+  - id: telesto
+    dockerfile: "Containerfile"
+    images:
+      - "quay.io/telesto/telesto"
+    labels:
+      "org.opencontainers.image.description": "Telesto"
+      "org.opencontainers.image.created": "{{.Date}}"
+      "org.opencontainers.image.name": "{{.ProjectName}}"
+      "org.opencontainers.image.revision": "{{.FullCommit}}"
+      "org.opencontainers.image.version": "{{.Version}}"
+      "org.opencontainers.image.source": "{{.GitURL}}"
     tags:
       - "{{.Version}}"
-    bare: true
-    preserve_import_paths: false
-    base_import_paths: false
-    repositories:
-      - quay.io/telesto/telesto
-    local_domain: quay.io/telesto/telesto
+    platforms:
+      - linux/amd64
+      - linux/arm64
+# kos:
+#   - platforms:
+#       - linux/amd64
+#       - linux/arm64
+#     main: ./cmd/telesto-server
+#     tags:
+#       - "{{.Version}}"
+#     bare: true
+#     preserve_import_paths: false
+#     base_import_paths: false
+#     repositories:
+#       - quay.io/telesto/telesto
+#     local_domain: quay.io/telesto/telesto
 
 checksum:
   name_template: "{{ .ProjectName }}_checksums.txt"

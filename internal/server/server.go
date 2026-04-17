@@ -1,9 +1,8 @@
 package server
 
 import (
+	"io/fs"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -14,6 +13,7 @@ import (
 	"github.com/thisisibrahimd/telesto/internal/server/middlewares"
 	"github.com/thisisibrahimd/telesto/internal/server/web"
 	"github.com/thisisibrahimd/telesto/internal/storage"
+	"github.com/thisisibrahimd/telesto/static"
 )
 
 type Config struct {
@@ -60,9 +60,8 @@ func NewServer(cfg *Config) (*Server, error) {
 	protect := middlewares.Protected(srv.config.OryKratosClient)
 
 	// static files
-	workDir, _ := os.Getwd()
-	filesDir := http.Dir(filepath.Join(workDir, "static"))
-	FileServer(router, "/static", filesDir)
+	subFs, _ := fs.Sub(static.Dir, ".")
+	FileServer(router, "/static", http.FS(subFs))
 
 	// api server impl
 	// strictServerConfig := api.ServerConfig{

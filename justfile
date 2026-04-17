@@ -84,7 +84,7 @@ build:
 
 build-local:
     just goreleaser release --snapshot --clean
-    kind load docker-image quay.io/telesto/telesto:$(jq -r .version dist/metadata.json) -n {{kind_cluster}}
+    kind load docker-image $(jq -r ".[] | select(.type == \"Docker Image\") | select(.name | contains(\"amd64\")) | .name" dist/artifacts.json) -n {{kind_cluster}}
 
 get-current-version:
     jq -r .version dist/metadata.json

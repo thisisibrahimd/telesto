@@ -23,7 +23,7 @@ local k = import 'ksonnet-util/kausal.libsonnet';
       containers=[
         self.container
         + container.withPorts(cPort.new('api', port))
-        + container.withCommand(['/ko-app/telesto-server', 'serve', '--address', '0.0.0.0:' + std.toString(port), '--dsn', 'http://db-rqlite.default.svc.cluster.local'])
+        + container.withCommand(['/usr/bin//telesto', 'serve', '--address', '0.0.0.0:' + std.toString(port), '--dsn', 'http://db-rqlite.default.svc.cluster.local'])
         // + container.withVolumeMountsMixin([
         //   volumeMount.new('telesto-config', '/etc/telesto', true),
         // ]),
