@@ -35,7 +35,7 @@ local k = import 'ksonnet-util/kausal.libsonnet';
     service: k.util.serviceFor(self.deployment),
     ingress: ingress.new(name)
              + ingress.spec.withRules(
-               ingressrule.withHost('api.telesto.localhost')
+               ingressrule.withHost('app.telesto.test')
                + ingressrule.http.withPaths(
                  httpingresspath.withPath('/')
                  + httpingresspath.withPathType('Prefix')

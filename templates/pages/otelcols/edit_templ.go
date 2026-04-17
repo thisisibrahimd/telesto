@@ -47,20 +47,20 @@ func Edit(otelcol OtelcolModel) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<h2>Edit</h2><ul><li><a href=\"/otelcols\">Back to Otelcols</a></li></ul><form hx-put=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"mb-6\"><a href=\"/otelcols\" class=\"text-sm text-indigo-600 hover:text-indigo-900\">&larr; Back to Otelcols</a></div><div class=\"max-w-lg bg-white rounded-lg shadow p-6\"><h2 class=\"text-2xl font-bold text-gray-900 mb-6\">Edit Otelcol</h2><form hx-put=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs("/otelcols/edit/" + otelcol.Id)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/pages/otelcols/edit.templ`, Line: 15, Col: 47}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/pages/otelcols/edit.templ`, Line: 16, Col: 48}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" hx-target=\"body\"><label for=\"name\">Name</label> <input type=\"text\" id=\"name\" name=\"name\" placeholder=\"Name\"> <input type=\"submit\" value=\"Save\"></form>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" hx-target=\"body\" class=\"space-y-4\"><div><label for=\"name\" class=\"block text-sm font-medium text-gray-700 mb-1\">Name</label> <input type=\"text\" id=\"name\" name=\"name\" placeholder=\"Name\" class=\"block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none\"></div><button type=\"submit\" class=\"w-full px-4 py-2.5 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors\">Save</button></form></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

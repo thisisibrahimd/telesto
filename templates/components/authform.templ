@@ -3,41 +3,43 @@ package components
 import "github.com/ory/kratos-client-go/v26"
 
 templ AuthForm(form client.UiContainer) {
-	<div class="p-6">
-		<form method={ form.Method } action={ form.Action } class="">
+	<div class="mt-6">
+		<form method={ form.Method } action={ form.Action } class="space-y-5">
 			for _, message := range form.Messages {
-				<span class="text-sm red">{ message.Text }</span>
+				<div class="rounded-md bg-red-50 p-3">
+					<span class="text-sm text-red-700">{ message.Text }</span>
+				</div>
 			}
-			<fieldset class="fieldset">
+			<fieldset class="space-y-4">
 				for _, node := range form.Nodes {
 					switch node.Type {
 						case "input":
 							switch node.Attributes.UiNodeInputAttributes.Type {
 								case "hidden":
+									<input
+										name={ node.Attributes.UiNodeInputAttributes.GetName() }
+										type={ node.Attributes.UiNodeInputAttributes.GetType() }
+										if node.Attributes.UiNodeInputAttributes.HasValue() {
+											value={ node.Attributes.UiNodeInputAttributes.GetValue().(string) }
+										}
+									/>
+								case "checkbox":
+									<div class="flex items-center gap-2">
 										<input
+											class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
 											name={ node.Attributes.UiNodeInputAttributes.GetName() }
 											type={ node.Attributes.UiNodeInputAttributes.GetType() }
 											if node.Attributes.UiNodeInputAttributes.HasValue() {
 												value={ node.Attributes.UiNodeInputAttributes.GetValue().(string) }
 											}
 										/>
-								case "checkbox":
-									<div>
-										<label for={ node.Meta.Label.GetId() } class="label">
+										<label for={ node.Meta.Label.GetId() } class="text-sm font-medium text-gray-700">
 											{ node.Meta.Label.GetText() }
 										</label>
-										<input
-											class="input"
-											name={ node.Attributes.UiNodeInputAttributes.GetName() }
-											type={ node.Attributes.UiNodeInputAttributes.GetType() }
-											if node.Attributes.UiNodeInputAttributes.HasValue() {
-												value={ node.Attributes.UiNodeInputAttributes.GetValue().(string) }
-											}
-										/>
 									</div>
 								case "button":
 									<button
-										class="btn"
+										class="w-full px-4 py-2.5 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors"
 										name={ node.Attributes.UiNodeInputAttributes.GetName() }
 										type={ node.Attributes.UiNodeInputAttributes.GetType() }
 										onclick={ templ.ComponentScript{Call: node.Attributes.UiNodeInputAttributes.GetOnclickTrigger() + "()"} }
@@ -47,7 +49,7 @@ templ AuthForm(form client.UiContainer) {
 									>{ node.Meta.Label.GetText() }</button>
 								case "submit":
 									<button
-										class="btn"
+										class="w-full px-4 py-2.5 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors"
 										name={ node.Attributes.UiNodeInputAttributes.GetName() }
 										type={ node.Attributes.UiNodeInputAttributes.GetType() }
 										if node.Attributes.UiNodeInputAttributes.HasValue() {
@@ -57,11 +59,11 @@ templ AuthForm(form client.UiContainer) {
 								default:
 									<div>
 										if node.Attributes.UiNodeInputAttributes.GetType() != "hidden" {
-											<label for={ node.Meta.Label.GetId() } class="label">
+											<label for={ node.Meta.Label.GetId() } class="block text-sm font-medium text-gray-700 mb-1">
 												{ node.Meta.Label.GetText() }
 											</label>
 											<input
-												class="input"
+												class="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
 												name={ node.Attributes.UiNodeInputAttributes.GetName() }
 												type={ node.Attributes.UiNodeInputAttributes.GetType() }
 												if node.Attributes.UiNodeInputAttributes.HasValue() {
@@ -74,11 +76,11 @@ templ AuthForm(form client.UiContainer) {
 						case "script":
 							<script async={ node.Attributes.UiNodeScriptAttributes.GetAsync() } src={ node.Attributes.UiNodeScriptAttributes.GetSrc() } type={ node.Attributes.UiNodeScriptAttributes.GetType() } referrerpolicy={ node.Attributes.UiNodeScriptAttributes.GetReferrerpolicy() } crossorigin={ node.Attributes.UiNodeScriptAttributes.GetCrossorigin() } integrity={ node.Attributes.UiNodeScriptAttributes.GetIntegrity() } id={ node.Attributes.UiNodeScriptAttributes.GetId() }></script>
 						default:
-							<p>{ node.Type }</p>
+							<p class="text-sm text-gray-500">{ node.Type }</p>
 					}
 					if _, ok := node.GetMessagesOk(); ok {
 						for _, message := range node.GetMessages() {
-							<span class="text-red-500">{ message.Text }</span>
+							<span class="text-sm text-red-600">{ message.Text }</span>
 						}
 					}
 				}

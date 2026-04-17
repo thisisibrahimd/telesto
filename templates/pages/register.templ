@@ -6,11 +6,9 @@ import "github.com/thisisibrahimd/telesto/templates/components"
 
 templ Register(form client.UiContainer) {
 	@layouts.Auth("Register") {
-		<div class="">
-			<div>
-				<h2 class="text-2xl">Register</h2>
-				@components.AuthForm(form)
-			</div>
+		<div>
+			<h2 class="text-2xl font-bold text-gray-900 text-center">Create an account</h2>
+			@components.AuthForm(form)
 		</div>
 	}
 }

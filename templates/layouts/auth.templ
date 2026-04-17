@@ -4,14 +4,14 @@ import "github.com/thisisibrahimd/telesto/templates/components"
 
 templ Auth(title string) {
 	<!DOCTYPE html>
-	<html>
+	<html lang="en">
 		<head>
 			<title>{ title }</title>
 			@components.Head()
 		</head>
-		<body class="flex items-center justify-center h-screen">
-			<div class="bg-gray-100 rounded-3xl p-10">
-					{ children... }
+		<body class="min-h-screen bg-gray-100 flex items-center justify-center">
+			<div class="w-full max-w-md bg-white rounded-2xl shadow-lg p-8">
+				{ children... }
 			</div>
 		</body>
 	</html>
