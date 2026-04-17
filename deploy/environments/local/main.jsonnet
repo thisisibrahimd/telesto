@@ -1,64 +1,80 @@
 // local ocdeployer = import '../../lib/otelcoldeployer/otelcoldeployer.libsonnet';
-// local t = import '../../lib/telesto/main.libsonnet';
+local t = import '../../lib/telesto/main.libsonnet';
 local tanka = import 'github.com/grafana/jsonnet-libs/tanka-util/main.libsonnet';
 local helm = tanka.helm.new(std.thisFile);
-// local kratosConfig = importstr '../../../kratos.yml';
-// local identitySchema = importstr '../../../identity.schema.json';
+local identitySchema = importstr '../../../identity.schema.json';
 
 {
-  // t: t.new('telesto-api')
-  //    + t.withImage('quay.io/telesto/telesto:0.0.4-alpha'),
-  // rqlite: helm.template('db', '../../charts/rqlite', {
-  //   namespace: 'default',
-  //   values: {
-  //     ingress: {
-  //       enabled: true,
-  //       hosts: [
-  //         'db.telesto.test',
-  //       ],
-  //     },
-  //   },
-  // }),
-  // kratos: helm.template('auth', '../../charts/kratos', {
-  //   namespace: 'default',
-  //   values: {
-  //     kratos: {
-  //       config: {
-  //         dsn: 'memory',
-  //         secrets: {
-  //           default: [
-  //             ' dolore occaecat nostrud Ut',
-  //             'sit et commodoaute ut voluptate consectetur Duis',
+  t: t.new('telesto-app')
+     + t.withImage('quay.io/telesto/telesto:0.0.4-alpha'),
+  rqlite: helm.template('db', '../../charts/rqlite', {
+    namespace: 'default',
+    values: {
+      ingress: {
+        enabled: true,
+        hosts: [
+          'db.telesto.test',
+        ],
+      },
+    },
+  }),
+  kratos: helm.template('auth', '../../charts/kratos', {
+    namespace: 'default',
+    values: {
+      ingress: {
+        public: {
+          enabled: true,
+          hosts: [
+            {
 
-  //           ],
-  //         },
-  //         identity: {
-  //           default_schema_id: 'default',
-  //           schemas: [
-  //             {
-  //               id: 'default',
-  //               url: 'file:///etc/config/identity.default.schema.json',
-  //             },
-  //           ],
-  //         },
-  //         courier: {
-  //           smtp: {
-  //             connection_uri: 'smtps://test:test@mailslurper:1025/?skip_ssl_verify=true',
-  //           },
-  //         },
-  //         selfservice: {
-  //           default_browser_return_url: 'http://auth.telesto.test/',
-  //         },
-  //       },
-  //       automigration: {
-  //         enabled: true,
-  //       },
-  //       identitySchemas: {
-  //         'identity.default.schema.json': std.toString(std.parseYaml(identitySchema)),
-  //       },
-  //     },
-  //   },
-  // }),
+              host: 'auth.telesto.test',
+              paths: [
+                {
+                  path: "/",
+                  pathType: "ImplementationSpecific"
+                }
+              ]
+            },
+          ],
+        },
+      },
+      kratos: {
+        config: {
+          dsn: 'memory',
+          secrets: {
+            default: [
+              ' dolore occaecat nostrud Ut',
+              'sit et commodoaute ut voluptate consectetur Duis',
+
+            ],
+          },
+          identity: {
+            default_schema_id: 'default',
+            schemas: [
+              {
+                id: 'default',
+                url: 'file:///etc/config/identity.default.schema.json',
+              },
+            ],
+          },
+          courier: {
+            smtp: {
+              connection_uri: 'smtps://test:test@mailslurper:1025/?skip_ssl_verify=true',
+            },
+          },
+          selfservice: {
+            default_browser_return_url: 'http://app.telesto.test/',
+          },
+        },
+        automigration: {
+          enabled: true,
+        },
+        identitySchemas: {
+          'identity.default.schema.json': std.toString(std.parseYaml(identitySchema)),
+        },
+      },
+    },
+  }),
   // pg_op: helm.template('pg-operator', '../../charts/cloudnative-pg', {
   //   namespace: 'default',
   //   values: {
