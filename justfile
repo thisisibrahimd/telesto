@@ -96,18 +96,22 @@ goreleaser *ARGS:
 get-argo-admin-password:
     kubectl get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d | pbcopy
 
-get-hosts:
-     kubectl get ing -A -o json | jq -r '.items[] | "\(.status.loadBalancer.ingress[0].ip)\t\(.spec.rules[0].host)"'
+start-kind-lb:
+    goreman -f ./kind-loadbalancer.procfile start
 
 download-hosts:
-    just get-hosts > ./.etchosts
+    kubectl get ing -A -o json | jq -r '.items[] | "\(.status.loadBalancer.ingress[0].ip)\t\(.spec.rules[0].host)"' > ./.etchosts
 
 cpk:
-    sudo cloud-provider-kind
+    sudo -n cloud-provider-kind
 
 sync-ing-to-hosts:
     just download-hosts
-    sudo hostctl add telesto -f .etchosts
+    sudo -n hostctl remove telesto
+    sudo -n hostctl add telesto -f .etchosts
+
+sync-ing-to-hosts-watch:
+    while true; do just sync-ing-to-hosts; sleep 5; done
 
 tk-lint ENVIRONMENT_NAME:
     tk lint "{{tanka_environment_directory}}/{{ENVIRONMENT_NAME}}"
