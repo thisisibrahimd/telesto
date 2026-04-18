@@ -20,8 +20,9 @@ type Config struct {
 	Address string
 	Logger  *Logger
 	// KeyStore        *KeyStore
-	Storage         *storage.Storage
-	OryKratosClient *ory.APIClient
+	Storage              *storage.Storage
+	OryKratosClient      *ory.APIClient
+	KratosPublicEndpoint string
 }
 
 type Server struct {
@@ -47,10 +48,10 @@ func NewServer(cfg *Config) (*Server, error) {
 	router.Use(middleware.RequestID)
 	router.Use(srv.config.Logger.Middleware)
 	router.Use(cors.Handler(cors.Options{
-		// AllowedOrigins:   []string{"https://foo.com"}, // Use this to allow specific origin hosts
-		AllowedOrigins:   []string{"https://*", "http://*"},
+		AllowedOrigins: []string{"http://auth.telesto.test"}, // Use this to allow specific origin hosts
+		// AllowedOrigins:   []string{"https://*", "http://*"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token", "Location"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token", "Location", "Cookie"},
 		ExposedHeaders:   []string{"Link"},
 		AllowCredentials: true,
 		MaxAge:           300, // Maximum value not ignored by any of major browsers
@@ -79,7 +80,7 @@ func NewServer(cfg *Config) (*Server, error) {
 	// router.Handle("/api", http.StripPrefix("/api/", serverApiHandler))
 
 	// web server
-	webServer := web.NewWebServer(&web.WebServerConfig{OryAPIClient: srv.config.OryKratosClient, Storage: srv.config.Storage})
+	webServer := web.NewWebServer(&web.WebServerConfig{OryAPIClient: srv.config.OryKratosClient, Storage: srv.config.Storage, AuthEndpoint: srv.config.KratosPublicEndpoint})
 	web.Handler(router, protect, webServer)
 
 	return srv, nil

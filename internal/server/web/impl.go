@@ -20,13 +20,15 @@ var _ WebServerInterface = (*WebServer)(nil)
 
 type WebServerConfig struct {
 	OryAPIClient *ory.APIClient
+	AuthEndpoint string
 	Storage      *storage.Storage
 }
 
 type WebServer struct {
-	oryClient *ory.APIClient
-	storage   *storage.Storage
-	decoder   *schema.Decoder
+	oryClient    *ory.APIClient
+	authEndpoint string
+	storage      *storage.Storage
+	decoder      *schema.Decoder
 }
 
 // CreateOtelcolExec implements [WebServerInterface].
@@ -145,7 +147,7 @@ func (s *WebServer) Index(w http.ResponseWriter, r *http.Request) {
 
 // Login implements [WebServerInterface].
 func (s *WebServer) Login(w http.ResponseWriter, r *http.Request) {
-	loginUrl := fmt.Sprintf("%s/self-service/login/browser", s.oryClient.GetConfig().Servers[0].URL)
+	loginUrl := fmt.Sprintf("%s/self-service/login/browser", s.authEndpoint)
 
 	flowParam := r.URL.Query().Get("flow")
 	if flowParam == "" {
@@ -168,18 +170,34 @@ func (s *WebServer) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if csrfCookie.String() == "" {
+		slog.Error("csrf cookie empty")
+		http.Redirect(w, r, loginUrl, http.StatusSeeOther)
+		return
+
+	} else {
+		slog.Info(csrfCookie.String())
+
+	}
+
 	getLoginFlow, getLoginFlowRes, err := s.oryClient.FrontendAPI.GetLoginFlow(r.Context()).Id(flowParam).Cookie(csrfCookie.String()).Execute()
 	if err != nil {
-		switch getLoginFlowRes.StatusCode {
-		case http.StatusNotFound:
-			w.Header().Add("Location", loginUrl)
-			w.WriteHeader(http.StatusSeeOther)
-			return
-		default:
-			slog.Error("failed to get login flow info", slog.Any("error", err))
-			w.WriteHeader(http.StatusInternalServerError)
-			return
+		slog.Error("failed to complete login flow", slog.Any("error", err))
+		if getLoginFlowRes != nil {
+
+			switch getLoginFlowRes.StatusCode {
+			case http.StatusNotFound:
+				w.Header().Add("Location", loginUrl)
+				w.WriteHeader(http.StatusSeeOther)
+				return
+			default:
+				slog.Error("failed to get login flow info", slog.Any("error", err))
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
 		}
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
 	pages.Login(getLoginFlow.Ui).Render(r.Context(), w)
@@ -187,7 +205,7 @@ func (s *WebServer) Login(w http.ResponseWriter, r *http.Request) {
 
 // Register implements [WebServerInterface].
 func (s *WebServer) Register(w http.ResponseWriter, r *http.Request) {
-	registrationUrl := fmt.Sprintf("%s/self-service/registration/browser", s.oryClient.GetConfig().Servers[0].URL)
+	registrationUrl := fmt.Sprintf("%s/self-service/registration/browser", s.authEndpoint)
 
 	flowParam := r.URL.Query().Get("flow")
 	if flowParam == "" {
@@ -255,6 +273,7 @@ func NewWebServer(cfg *WebServerConfig) WebServerInterface {
 	s.oryClient = cfg.OryAPIClient
 	s.storage = cfg.Storage
 	s.decoder = schema.NewDecoder()
+	s.authEndpoint = cfg.AuthEndpoint
 
 	return s
 }

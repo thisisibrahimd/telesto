@@ -107,7 +107,6 @@ cpk:
 
 sync-ing-to-hosts:
     just download-hosts
-    sudo -n hostctl remove telesto
     sudo -n hostctl add telesto -f .etchosts
 
 sync-ing-to-hosts-watch:

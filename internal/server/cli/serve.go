@@ -70,7 +70,12 @@ func NewServeCommand() *cobra.Command {
 				UserAgent: "teleesto-server",
 				Servers: ory.ServerConfigurations{
 					{
-						URL: opts.KratosAdminEndpoint,
+						URL:         opts.KratosPublicEndpoint,
+						Description: "kratos public endpoint",
+					},
+					{
+						URL:         opts.KratosAdminEndpoint,
+						Description: "kratos admin endpoint",
 					},
 				},
 			}
@@ -84,8 +89,9 @@ func NewServeCommand() *cobra.Command {
 				Address: opts.Address,
 				Logger:  server.NewServerLogger(l),
 				// KeyStore:        srvKeyStore,
-				Storage:         sto,
-				OryKratosClient: oryClient,
+				Storage:              sto,
+				OryKratosClient:      oryClient,
+				KratosPublicEndpoint: opts.KratosPublicEndpoint,
 			}
 			srv, err := server.NewServer(srvCfg)
 			if err != nil {

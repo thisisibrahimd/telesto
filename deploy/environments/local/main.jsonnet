@@ -26,21 +26,74 @@ local identitySchema = importstr '../../../identity.schema.json';
           enabled: true,
           hosts: [
             {
-
               host: 'auth.telesto.test',
               paths: [
                 {
-                  path: "/",
-                  pathType: "ImplementationSpecific"
-                }
-              ]
+                  path: '/',
+                  pathType: 'ImplementationSpecific',
+                },
+              ],
             },
           ],
         },
       },
+      deployment: {
+        extraEnv: [
+          {
+            name: 'LOG_LEAK_SENSITIVE_VALUES',
+            value: 'true',
+          },
+        ],
+      },
       kratos: {
+        development: true,
         config: {
+          dev: true,
           dsn: 'memory',
+          cookies: {
+            domain: 'telesto.test',
+            path: '/',
+            // same_site: 'Lax',
+          },
+          session: {
+            cookie: {
+              domain: 'telesto.test',
+              path: '/',
+              // same_site: 'Lax',
+            },
+          },
+          serve: {
+            admin: {
+              base_url: 'http://auth-krato-admin',
+            },
+            public: {
+              base_url: 'http://auth.telesto.test',
+              cors: {
+                debug: true,
+                enabled: true,
+                allowed_origins: [
+                  'http://app.telesto.test',
+                ],
+                allowed_methods: [
+                  'POST',
+                  'GET',
+                  'PUT',
+                  'PATCH',
+                  'DELETE',
+                ],
+                allowed_headers: [
+                  'Authorization',
+                  'Content-Type',
+                  'Cookie',
+                ],
+                exposed_headers: [
+                  'Content-Type',
+                  'Set-Cookie',
+                ],
+                allow_credentials: true,
+              },
+            },
+          },
           secrets: {
             default: [
               ' dolore occaecat nostrud Ut',
@@ -64,6 +117,32 @@ local identitySchema = importstr '../../../identity.schema.json';
           },
           selfservice: {
             default_browser_return_url: 'http://app.telesto.test/',
+            allowed_return_urls: [
+              'http://app.telesto.test',
+            ],
+            methods: {
+              passkey: {
+                enabled: true,
+                config: {
+                  rp: {
+                    display_name: 'Telesto',
+                    id: 'telesto.test',
+                    origins: [
+                      'http://app.telesto.test',
+                    ],
+                  },
+                },
+              },
+            },
+            flows: {
+              login: {
+                ui_url: 'http://app.telesto.test/login',
+              },
+              registration: {
+                enabled: true,
+                ui_url: 'http://app.telesto.test/register',
+              },
+            },
           },
         },
         automigration: {

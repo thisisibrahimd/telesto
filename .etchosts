@@ -1,1 +1,4 @@
-192.168.97.3	argocd.telesto.test
+192.168.97.2	auth.telesto.test
+192.168.97.2	argocd.telesto.test
+192.168.97.2	db.telesto.test
+192.168.97.2	app.telesto.test
