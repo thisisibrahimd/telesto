@@ -1,11 +1,13 @@
 package web
 
 import (
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"regexp"
 	"slices"
+	"strings"
 
 	"github.com/gorilla/schema"
 	ory "github.com/ory/kratos-client-go/v26"
@@ -29,6 +31,51 @@ type WebServer struct {
 	authEndpoint string
 	storage      *storage.Storage
 	decoder      *schema.Decoder
+}
+
+// ExecuteParams implements [WebServerInterface].
+func (s *WebServer) ExecuteParams(w http.ResponseWriter, r *http.Request) {
+	type PluginInputParams struct {
+		// The parameters passed in the ApplicationSet spec.generators.plugin.parameters field
+		Parameters map[string]interface{} `json:"parameters"`
+	}
+	type PluginInput struct {
+		ApplicationSetName string            `json:"applicationSetName"`
+		Input              PluginInputParams `json:"input"`
+	}
+	type PluginOutputParams struct {
+		// Must be a list of object maps. Each map becomes a set of parameters for a new Application.
+		Parameters []map[string]interface{} `json:"parameters"`
+	}
+	type PluginOutput struct {
+		Output PluginOutputParams `json:"output"`
+	}
+	type GetParamsExecutePostResponse struct {
+		Body PluginOutput
+	}
+
+	otelcols, err := s.storage.GetOtelcols(r.Context())
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	output := &PluginOutput{
+		Output: PluginOutputParams{
+			Parameters: []map[string]interface{}{},
+		},
+	}
+
+	for _, otelcol := range otelcols {
+		output.Output.Parameters = append(output.Output.Parameters, map[string]interface{}{
+			"otelcol": map[string]string{
+				"id":   strings.ToLower(otelcol.ID),
+				"name": strings.ToLower(otelcol.Name),
+			},
+		})
+	}
+
+	_ = json.NewEncoder(w).Encode(output)
 }
 
 // CreateOtelcolExec implements [WebServerInterface].
@@ -101,7 +148,6 @@ func (s *WebServer) GetOtelcol(w http.ResponseWriter, r *http.Request) {
 	}
 
 	otelcol, _ := s.storage.GetOtelcolByUserId(r.Context(), userId, otelcolId)
-
 	otelcols.Show(*convertOtelcol(otelcol)).Render(r.Context(), w)
 }
 

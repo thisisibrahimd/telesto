@@ -5,10 +5,7 @@ local k = import 'ksonnet-util/kausal.libsonnet';
   local deployment = k.apps.v1.deployment,
   local container = k.core.v1.container,
   local cPort = k.core.v1.containerPort,
-  local ingress = k.networking.v1.ingress,
   local job = k.batch.v1.job,
-  local ingressrule = k.networking.v1.ingressRule,
-  local httpingresspath = k.networking.v1.httpIngressPath,
   local configmap = k.core.v1.configMap,
   local volume = k.core.v1.volume,
   local volumeMount = k.core.v1.volumeMount,
@@ -23,7 +20,7 @@ local k = import 'ksonnet-util/kausal.libsonnet';
       containers=[
         self.container
         + container.withPorts(cPort.new('api', port))
-        + container.withCommand(['/usr/bin/telesto', 'serve', '--address', '0.0.0.0:' + std.toString(port), '--dsn', 'http://db-rqlite.default.svc.cluster.local', '--kratos-public-endpoint', 'http://auth.telesto.test', '--kratos-admin-endpoint', 'http://auth-kratos-admin'])
+        + container.withCommand(['/usr/bin/telesto', 'serve', '--migrate', '--address', '0.0.0.0:' + std.toString(port), '--dsn', 'http://db-rqlite.default.svc.cluster.local', '--kratos-internal-public-endpoint', 'http://auth-kratos-public', '--kratos-public-endpoint', 'https://auth.telesto.test', '--kratos-admin-endpoint', 'http://auth-kratos-admin']),
         // + container.withVolumeMountsMixin([
         //   volumeMount.new('telesto-config', '/etc/telesto', true),
         // ]),
@@ -33,29 +30,84 @@ local k = import 'ksonnet-util/kausal.libsonnet';
     ]),
 
     service: k.util.serviceFor(self.deployment),
-    ingress: ingress.new(name)
-             + ingress.spec.withRules(
-               ingressrule.withHost('app.telesto.test')
-               + ingressrule.http.withPaths(
-                 httpingresspath.withPath('/')
-                 + httpingresspath.withPathType('Prefix')
-                 + httpingresspath.backend.service.withName(name)
-                 + httpingresspath.backend.service.port.withNumber(port)
-               )
-             ),
-  //   migration_job: job.new('telesto-db-migration')
-  //                  + job.spec.template.spec.withRestartPolicy('OnFailure')
-  //                  + job.spec.withTtlSecondsAfterFinished(60)
-  //                  + job.spec.template.spec.withContainers(
-  //                    self.container
-  //                    + container.withCommand(['/ko-app/telesto-server', 'migrate', '--dsn', 'http://db-rqlite.default.svc.cluster.local?x-connect-insecure=true'])
-  //                    // + container.withVolumeMountsMixin([
-  //                    //   volumeMount.new('telesto-config', '/etc/telesto', true),
-  //                    // ]),
-  //                  )
-  //                  + job.spec.template.spec.withVolumesMixin([
-  //                    volume.fromConfigMap('telesto-config', 'telesto-config'),
-  //                  ]),
+    gateway: {
+      apiVersion: 'gateway.networking.k8s.io/v1',
+      kind: 'Gateway',
+      metadata: {
+        name: 'gateway-telesto',
+        annotations: {
+          'cert-manager.io/cluster-issuer': 'local-cluster-issuer',
+        },
+      },
+      spec: {
+        gatewayClassName: 'nginx',
+        listeners: [
+          {
+            name: 'http',
+            port: 80,
+            protocol: 'HTTP',
+            hostname: 'app.telesto.test',
+          },
+          {
+            name: 'https',
+            port: 443,
+            protocol: 'HTTPS',
+            hostname: 'app.telesto.test',
+            allowedRoutes: {
+              namespaces: {
+                from: 'All',
+              },
+            },
+            tls: {
+              mode: 'Terminate',
+              certificateRefs: [
+                {
+                  group: '',
+                  kind: 'Secret',
+                  name: 'test-telesto-app-tls',
+                  namespace: 'default',
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+    httproute_telesto: {
+      apiVersion: 'gateway.networking.k8s.io/v1',
+      kind: 'HTTPRoute',
+      metadata: {
+        name: 'http-route-telesto',
+      },
+      spec: {
+        parentRefs: [
+          {
+            name: 'gateway-telesto',
+          },
+        ],
+        hostnames: [
+          'app.telesto.test',
+        ],
+        rules: [
+          {
+            matches: [
+              {
+                path: {
+                  type: 'PathPrefix',
+                  value: '/',
+                },
+              },
+            ],
+            backendRefs: [
+              {
+                name: 'telesto-app',
+                port: 9000,
+              },
+            ],
+          },
+        ],
+      },
+    },
   },
   withImage(image): {
     container+:

@@ -1,4 +1,7 @@
-192.168.97.2	auth.telesto.test
 192.168.97.2	argocd.telesto.test
-192.168.97.2	db.telesto.test
-192.168.97.2	app.telesto.test
+192.168.97.6	auth.telesto.test
+192.168.97.10	console.openobserve.telesto.test
+192.168.97.5	console.rustfs.telesto.test
+192.168.97.3	app.telesto.test
+192.168.97.7	01kt8kyp7p8ca1zvn263s1kd7c.o.telesto.test
+192.168.97.8	01ktaz4cddxqbwnkvzaskcf6db.o.telesto.test

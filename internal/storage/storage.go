@@ -8,11 +8,20 @@ import (
 	"github.com/thisisibrahimd/telesto/internal/storage/query"
 	"github.com/thisisibrahimd/telesto/internal/telemetry"
 	"goki.dev/rqlite"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+)
+
+type DBType string
+
+var (
+	DB_TYPE_RQLITE   string = "rqlite"
+	DB_TYPE_POSTGRES string = "postgres"
 )
 
 type Config struct {
 	Migrate    bool
+	Type       string
 	DSN        string
 	Logger     *StorageLogger
 	GormLogger *StorageGormLogger
@@ -66,9 +75,19 @@ func NewStorage(cfg *Config) (*Storage, error) {
 		config: cfg,
 	}
 
-	db, err := gorm.Open(rqlite.Open(sto.config.DSN), &gorm.Config{
-		Logger: sto.config.GormLogger,
-	})
+	var db *gorm.DB
+	var err error
+	switch sto.config.Type {
+	case DB_TYPE_RQLITE:
+		db, err = gorm.Open(rqlite.Open(sto.config.DSN), &gorm.Config{
+			Logger: sto.config.GormLogger,
+		})
+	case DB_TYPE_POSTGRES:
+		db, err = gorm.Open(postgres.Open(sto.config.DSN), &gorm.Config{
+			Logger: sto.config.GormLogger,
+		})
+	}
+
 	if err != nil {
 		slog.Error("unable to connect to db", slog.Any("error", err))
 	}

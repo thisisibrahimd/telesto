@@ -16,6 +16,10 @@ type WebServerInterface interface {
 	// GET /logout
 	Logout(w http.ResponseWriter, r *http.Request)
 
+	// ARGO
+	// POST /api/v1/getparams.execute
+	ExecuteParams(w http.ResponseWriter, r *http.Request)
+
 	// OTELCOL RESOURCE
 	// GET /otelcols
 	ListOtelcols(w http.ResponseWriter, r *http.Request)
@@ -38,6 +42,8 @@ func Handler(r chi.Router, protected func(http.Handler) http.Handler, w WebServe
 	r.Get("/", http.HandlerFunc(w.Index))
 	r.Get("/login", http.HandlerFunc(w.Login))
 	r.Get("/register", http.HandlerFunc(w.Register))
+
+	r.Post("/api/v1/getparams.execute", http.HandlerFunc(w.ExecuteParams))
 
 	// protect routes
 	r.Group(func(r chi.Router) {

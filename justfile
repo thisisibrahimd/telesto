@@ -18,6 +18,7 @@ start-auth:
     
 wait-for-auth:
     while true; do curl -o /dev/null -sf localhost:4434/health/ready && echo "auth ready" && exit; done
+
 wait-for-users:
     while true; do kratos ls identities -e http://localhost:4434 --format json | jq --exit-status '.identities | length != 0' && echo "users are ready" && exit; done
 
@@ -100,10 +101,13 @@ start-kind-lb:
     goreman -f ./kind-loadbalancer.procfile start
 
 download-hosts:
-    kubectl get ing -A -o json | jq -r '.items[] | "\(.status.loadBalancer.ingress[0].ip)\t\(.spec.rules[0].host)"' > ./.etchosts
+    kubectl get gateway -o json | jq '.items[] | "\(.status.addresses[0].value)\t\(.spec.listeners[0].hostname)"' -r > ./.etchosts
 
 cpk:
-    sudo -n cloud-provider-kind
+    sudo -n cloud-provider-kind --gateway-channel disabled
+
+clear-hosts:
+    sudo -n hostctl remove telesto
 
 sync-ing-to-hosts:
     just download-hosts
@@ -132,3 +136,9 @@ download-config:
 
 delete-local-cluster:
     kind delete cluster --name {{kind_cluster}}
+
+
+## test otelcols instances
+
+test-otelcol ID:
+    telemetrygen traces --otlp-endpoint {{ID}}.o.telesto.test:4318 --traces 10 --otlp-http

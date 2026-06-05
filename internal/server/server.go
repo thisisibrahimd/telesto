@@ -58,7 +58,7 @@ func NewServer(cfg *Config) (*Server, error) {
 	}))
 	router.Use(middleware.Recoverer)
 	router.Use(middlewares.LoadSession(srv.config.OryKratosClient))
-	protect := middlewares.Protected(srv.config.OryKratosClient)
+	protect := middlewares.Protected(srv.config.OryKratosClient, srv.config.KratosPublicEndpoint)
 
 	// static files
 	subFs, _ := fs.Sub(static.Dir, ".")

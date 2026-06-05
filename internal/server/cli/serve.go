@@ -12,19 +12,21 @@ import (
 )
 
 type ServeOptions struct {
-	Address              string
-	LogLevel             string `json:"log-level"`
-	DSN                  string `json:"dsn"`
-	KratosPublicEndpoint string `json:"kratos-public-endpoint"`
-	KratosAdminEndpoint  string `json:"kratos-admin-endpoint"`
-	Migrate              bool
-	InitialUsername      string
-	InitialPassword      string
-	CookieStoreKey       string
-	CookieEncKey         string
-	SessionStoreKey      string
-	SessionEncKey        string
-	CsrfKey              string
+	Address                      string
+	LogLevel                     string `json:"log-level"`
+	DSN                          string `json:"dsn"`
+	KratosInternalPublicEndpoint string `json:"kratos-internal-public-endpoint"`
+	KratosPublicEndpoint         string `json:"kratos-public-endpoint"`
+	KratosInternalAdminEndpoint  string `json:"kratos-internal-admin-endpoint"`
+	KratosAdminEndpoint          string `json:"kratos-admin-endpoint"`
+	Migrate                      bool
+	InitialUsername              string
+	InitialPassword              string
+	CookieStoreKey               string
+	CookieEncKey                 string
+	SessionStoreKey              string
+	SessionEncKey                string
+	CsrfKey                      string
 }
 
 func NewServeCommand() *cobra.Command {
@@ -60,6 +62,7 @@ func NewServeCommand() *cobra.Command {
 			stoCfg := storage.DefaultConfig()
 			stoCfg.Migrate = opts.Migrate
 			stoCfg.DSN = opts.DSN
+			stoCfg.Type = storage.DB_TYPE_RQLITE
 			sto, err := storage.NewStorage(stoCfg)
 			if err != nil {
 				return xerrors.New("failed to create storage", err)
@@ -70,7 +73,7 @@ func NewServeCommand() *cobra.Command {
 				UserAgent: "teleesto-server",
 				Servers: ory.ServerConfigurations{
 					{
-						URL:         opts.KratosPublicEndpoint,
+						URL:         opts.KratosInternalPublicEndpoint,
 						Description: "kratos public endpoint",
 					},
 					{
@@ -110,7 +113,9 @@ func NewServeCommand() *cobra.Command {
 	cmd.Flags().StringVar(&opts.Address, "address", "localhost:9000", "server address")
 	cmd.Flags().StringVar(&opts.LogLevel, "log-level", "info", "log level")
 	cmd.Flags().StringVar(&opts.DSN, "dsn", "http://localhost:4001", "dsn")
+	cmd.Flags().StringVar(&opts.KratosInternalPublicEndpoint, "kratos-internal-public-endpoint", "http://localhost:4433", "kratos internal public endpoint")
 	cmd.Flags().StringVar(&opts.KratosPublicEndpoint, "kratos-public-endpoint", "http://localhost:4433", "kratos public endpoint")
+	cmd.Flags().StringVar(&opts.KratosInternalAdminEndpoint, "kratos-internal-admin-endpoint", "http://localhost:4434", "kratos internal admin endpoint")
 	cmd.Flags().StringVar(&opts.KratosAdminEndpoint, "kratos-admin-endpoint", "http://localhost:4434", "kratos admin endpoint")
 	cmd.Flags().BoolVar(&opts.Migrate, "migrate", false, "migrate db")
 	cmd.Flags().StringVar(&opts.CookieStoreKey, "cookie-store-key", "", "cookie store key")
