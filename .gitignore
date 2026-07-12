@@ -15,4 +15,5 @@ openobserve
 deploy/charts/**
 deploy/**/vendor/**
 
-.etchosts
+\.etchosts
+tmp
