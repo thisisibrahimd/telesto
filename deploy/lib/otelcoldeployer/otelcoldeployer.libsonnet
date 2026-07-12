@@ -98,7 +98,6 @@ local k = import '../k.libsonnet';
                           ],
                         },
                       },
-
                       {
                         apiVersion: 'gateway.networking.k8s.io/v1',
                         kind: 'HTTPRoute',
@@ -109,6 +108,7 @@ local k = import '../k.libsonnet';
                           parentRefs: [
                             {
                               name: 'gateway-telesto-otelcol-{{.otelcol.id}}',
+                              sectionName: 'https',
                             },
                           ],
                           hostnames: [
@@ -230,7 +230,7 @@ local k = import '../k.libsonnet';
                           traces: {
                             exporters: [
                               'debug',
-                              'otlphttp/openobserve'
+                              'otlphttp/openobserve',
                             ],
                             processors: [
                               'memory_limiter',

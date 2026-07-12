@@ -226,7 +226,7 @@ func (s *WebServer) Login(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	getLoginFlow, getLoginFlowRes, err := s.oryClient.FrontendAPI.GetLoginFlow(r.Context()).Id(flowParam).Cookie(csrfCookie.String()).Execute()
+	getLoginFlow, getLoginFlowRes, err := s.ooryKratosClientFrontendAPI.GetLoginFlow(r.Context()).Id(flowParam).Cookie(csrfCookie.String()).Execute()
 	if err != nil {
 		slog.Error("failed to complete login flow", slog.Any("error", err))
 		if getLoginFlowRes != nil {
@@ -271,7 +271,7 @@ func (s *WebServer) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	getRegisterFlow, getRegisterFlowRes, err := s.oryClient.FrontendAPI.GetRegistrationFlow(r.Context()).Id(flowParam).Cookie(csrfCookie.String()).Execute()
+	getRegisterFlow, getRegisterFlowRes, err := s.ooryKratosClientFrontendAPI.GetRegistrationFlow(r.Context()).Id(flowParam).Cookie(csrfCookie.String()).Execute()
 	if err != nil {
 		switch getRegisterFlowRes.StatusCode {
 		case http.StatusNotFound:
@@ -289,7 +289,7 @@ func (s *WebServer) Register(w http.ResponseWriter, r *http.Request) {
 
 // Logout implements [WebServerInterface].
 func (s *WebServer) Logout(w http.ResponseWriter, r *http.Request) {
-	createBrowserLogoutFlow, createBrowserLogoutFlowRes, err := s.oryClient.FrontendAPI.CreateBrowserLogoutFlow(r.Context()).Cookie(r.Header.Get("Cookie")).Execute()
+	createBrowserLogoutFlow, createBrowserLogoutFlowRes, err := s.ooryKratosClientFrontendAPI.CreateBrowserLogoutFlow(r.Context()).Cookie(r.Header.Get("Cookie")).Execute()
 	if err != nil {
 		if createBrowserLogoutFlowRes != nil {
 			switch createBrowserLogoutFlowRes.StatusCode {
@@ -316,8 +316,7 @@ func (s *WebServer) Logout(w http.ResponseWriter, r *http.Request) {
 func NewWebServer(cfg *WebServerConfig) WebServerInterface {
 	s := &WebServer{}
 
-	s.oryClient = cfg.OryAPIClient
-	s.storage = cfg.Storage
+	s.ooryKratosClient= cfg.OOryKratosAPIClient	s.storage = cfg.Storage
 	s.decoder = schema.NewDecoder()
 	s.authEndpoint = cfg.AuthEndpoint
 

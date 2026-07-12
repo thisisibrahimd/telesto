@@ -28,7 +28,9 @@
 
   _hasHelmHooks(obj)::
     std.objectHas(obj, 'metadata')
+    && std.isObject(obj.metadata)
     && std.objectHas(obj.metadata, 'annotations')
+    && std.isObject(obj.metadata.annotations)
     && std.any([
       std.objectHas(obj.metadata.annotations, k)
       for k in helmHookKeys

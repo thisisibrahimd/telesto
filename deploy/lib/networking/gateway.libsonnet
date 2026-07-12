@@ -2,18 +2,20 @@ local tanka = import 'github.com/grafana/jsonnet-libs/tanka-util/main.libsonnet'
 local helm = tanka.helm.new(std.thisFile);
 
 local kustomize = tanka.kustomize.new(std.thisFile);
+local k = import 'ksonnet-util/kausal.libsonnet';
 
 {
   new(): {
     // crds for gateway k8s api
-    k8s_gateway_api_crds: kustomize.build('gatewaycrds'),
+    k8s_gateway_api_crds: kustomize.build('gatewaycrds/localized-gatewaycrds'),
+    ns_gateway_nginx: k.core.v1.namespace.new('gateway-nginx'),
     // ca cert for nginx gateway
     gateway_nginx_certificate: {
       apiVersion: 'cert-manager.io/v1',
       kind: 'Certificate',
       metadata: {
         name: 'nginx-gateway-ca',
-        namespace: 'default',
+        namespace: 'gateway-nginx',
       },
       spec: {
         isCA: true,
@@ -36,7 +38,7 @@ local kustomize = tanka.kustomize.new(std.thisFile);
       kind: 'ClusterIssuer',
       metadata: {
         name: 'nginx-gateway-issuer',
-        namespace: 'default',
+        namespace: 'gateway-nginx',
       },
       spec: {
         ca: {
@@ -50,7 +52,7 @@ local kustomize = tanka.kustomize.new(std.thisFile);
       kind: 'Certificate',
       metadata: {
         name: 'nginx-gateway-server-tls',
-        namespace: 'default',
+        namespace: 'gateway-nginx',
       },
       spec: {
         secretName: 'nginx-gateway-server-tls',
@@ -71,7 +73,7 @@ local kustomize = tanka.kustomize.new(std.thisFile);
       kind: 'Certificate',
       metadata: {
         name: 'nginx-gateway-agent-tls',
-        namespace: 'default',
+        namespace: 'gateway-nginx',
       },
       spec: {
         secretName: 'nginx-gateway-agent-tls',
@@ -88,7 +90,7 @@ local kustomize = tanka.kustomize.new(std.thisFile);
       },
     },
     helm_ngf: helm.template('ngf', '../../charts/nginx-gateway-fabric', {
-      namespace: 'default',
+      namespace: 'gateway-nginx',
       values: {
         nginx: {
           service: {

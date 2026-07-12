@@ -2,13 +2,16 @@ local k = import '../k.libsonnet';
 local tanka = import 'github.com/grafana/jsonnet-libs/tanka-util/main.libsonnet';
 local helm = tanka.helm.new(std.thisFile);
 
+// hard coded paths
+// TODO: move to assumed paths
 local certPath = importstr '/Users/ibrahimd/.local/share/mkcert/rootCA.pem';
 local keyPath = importstr '/Users/ibrahimd/.local/share/mkcert/rootCA-key.pem';
 
 {
   new(): {
+    ns_cert_manager: k.core.v1.namespace.new('cert-manager'),
     cert_manager: helm.template('certs', '../../charts/cert-manager', {
-      namespace: 'default',
+      namespace: 'cert-manager',
       values: {
         config: {
           apiVersion: 'controller.config.cert-manager.io/v1alpha1',

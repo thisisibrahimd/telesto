@@ -5,10 +5,10 @@ local k = import 'ksonnet-util/kausal.libsonnet';
   local deployment = k.apps.v1.deployment,
   local container = k.core.v1.container,
   local cPort = k.core.v1.containerPort,
-  local job = k.batch.v1.job,
-  local configmap = k.core.v1.configMap,
   local volume = k.core.v1.volume,
-  local volumeMount = k.core.v1.volumeMount,
+  // local job = k.batch.v1.job,
+  // local configmap = k.core.v1.configMap,
+  // local volumeMount = k.core.v1.volumeMount,
 
   new(name='telesto', replicas=1, port=9000): {
     container::
@@ -73,6 +73,39 @@ local k = import 'ksonnet-util/kausal.libsonnet';
         ],
       },
     },
+    httproute_telesto_http_to_https_redirect: {
+      apiVersion: 'gateway.networking.k8s.io/v1',
+      kind: 'HTTPRoute',
+      metadata: {
+        name: 'http-route-telesto-http-to-https-redirect',
+      },
+      spec: {
+        parentRefs: [
+          {
+            name: 'gateway-telesto',
+            sectionName: 'http',
+            port: 80,
+          },
+        ],
+        hostnames: [
+          'app.telesto.test',
+        ],
+        rules: [
+          {
+            filters: [
+              {
+                type: 'RequestRedirect',
+                requestRedirect: {
+                  scheme: 'https',
+                  statusCode: 301,
+                  port: 443,
+                },
+              },
+            ],
+          },
+        ],
+      },
+    },
     httproute_telesto: {
       apiVersion: 'gateway.networking.k8s.io/v1',
       kind: 'HTTPRoute',
@@ -83,6 +116,8 @@ local k = import 'ksonnet-util/kausal.libsonnet';
         parentRefs: [
           {
             name: 'gateway-telesto',
+            sectionName: 'https',
+            port: 443,
           },
         ],
         hostnames: [

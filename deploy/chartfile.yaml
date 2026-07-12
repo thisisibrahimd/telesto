@@ -28,6 +28,8 @@ repositories:
   url: http://charts.rustfs.com
 - name: nginx
   url: oci://ghcr.io/nginx/charts
+- name: crossplane-stable
+  url: https://charts.crossplane.io/stable
 requires:
 - chart: open-telemetry/opentelemetry-collector
   version: 0.138.1
@@ -50,7 +52,7 @@ requires:
 - chart: rqlite/rqlite
   version: 2.0.0
 - chart: ory/kratos
-  version: 0.61.1
+  version: 0.62.1
 - chart: ory/kratos-selfservice-ui-node
   version: 0.61.1
 - chart: cnpg/cloudnative-pg
@@ -67,4 +69,10 @@ requires:
   version: 0.0.93
 - chart: nginx/nginx-gateway-fabric
   version: 2.5.1
+- chart: crossplane-stable/crossplane
+  version: 2.3.2
+- chart: ory/hydra
+  version: 0.62.1
+- chart: open-telemetry/opentelemetry-operator
+  version: 0.58.0
 version: 1
