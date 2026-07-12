@@ -98,6 +98,7 @@ get-argo-admin-password:
     kubectl get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d | pbcopy
 
 start-kind-lb:
+    rm .etchosts || echo '.etchosts is not existent';
     goreman -f ./kind-loadbalancer.procfile start
 
 download-hosts:
@@ -106,12 +107,9 @@ download-hosts:
 cpk:
     sudo -n cloud-provider-kind --gateway-channel disabled
 
-clear-hosts:
-    sudo -n hostctl remove telesto
-
 sync-ing-to-hosts:
     just download-hosts
-    sudo -n hostctl add telesto -f .etchosts
+    sudo -n hostctl replace telesto -f .etchosts
 
 sync-ing-to-hosts-watch:
     while true; do just sync-ing-to-hosts; sleep 5; done

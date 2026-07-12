@@ -1,0 +1,2 @@
+-r --decoration=fancy '.go$' just build
+-r '\.(jsonnet|libsonnet)$' just tk-apply local
