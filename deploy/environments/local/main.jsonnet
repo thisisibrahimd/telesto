@@ -8,18 +8,28 @@ local ca = import '../../lib/networking/ca.libsonnet';
 // local openobserve = import '../../lib/openobserve/openobserve.libsonnet';
 local auth = import '../../lib/auth/auth.libsonnet';
 local gateway = import '../../lib/networking/gateway.libsonnet';
+local secret_json = std.extVar('secret_json');
+local secret = std.parseJson(secret_json);
+
+local wrap(name) = { [name]+: name };
+local ns(name) = k.core.v1.namespace.new(name);
+
+local namespaces = {
+  crossplane_system: 'crossplane-system',
+  storage: 'storage',
+};
 
 {
   // telesto certificate management infra
   // install ca cert from local machine into cluster and create cluster issuer
-  telesto_ca_infra: ca.new(),
+  telesto_ca_infra: ca.new(secret.certs.crtB64, secret.certs.keyB64),
 
   // gateway networking
   gateway: gateway.new(),
 
-  ns_crossplane_system: k.core.v1.namespace.new('crossplane-system'),
+  ns_crossplane_system: ns(namespaces.crossplane_system),
   crossplane: helm.template('crossplane', '../../charts/crossplane', {
-    namespace: 'crossplane-system',
+    namespace: namespaces.crossplane_system,
     values: {},
   }),
   crossplane_provider_aws_s3: {
@@ -27,6 +37,7 @@ local gateway = import '../../lib/networking/gateway.libsonnet';
     kind: 'Provider',
     metadata: {
       name: 'crossplane-contrib-provider-aws-s3',
+      namespace: namespaces.crossplane_system,
     },
     spec: {
       package: 'xpkg.crossplane.io/crossplane-contrib/provider-aws-s3:v2.0.0',
@@ -37,6 +48,7 @@ local gateway = import '../../lib/networking/gateway.libsonnet';
     kind: 'Provider',
     metadata: {
       name: 'crossplane-contrib-provider-http',
+      namespace: namespaces.crossplane_system,
     },
     spec: {
       package: 'xpkg.crossplane.io/crossplane-contrib/provider-http:v1.0.14',
@@ -47,7 +59,7 @@ local gateway = import '../../lib/networking/gateway.libsonnet';
     kind: 'ClusterProviderConfig',
     metadata: {
       name: 'cluster-provider-http-insecure-config',
-      // namespace: 'crossplane-system',
+      namespace: namespaces.crossplane_system,
     },
     spec: {
       credentials: {
@@ -63,6 +75,7 @@ local gateway = import '../../lib/networking/gateway.libsonnet';
     kind: 'Function',
     metadata: {
       name: 'crossplane-contrib-function-patch-and-transform',
+      namespace: namespaces.crossplane_system,
     },
     spec: {
       package: 'xpkg.crossplane.io/crossplane-contrib/function-patch-and-transform:v0.8.2',
@@ -73,6 +86,7 @@ local gateway = import '../../lib/networking/gateway.libsonnet';
     kind: 'CompositeResourceDefinition',
     metadata: {
       name: 'kratosusers.auth.telesto.crossplane.io',
+      namespace: namespaces.crossplane_system,
     },
     spec: {
       scope: 'Namespaced',
@@ -97,8 +111,12 @@ local gateway = import '../../lib/networking/gateway.libsonnet';
                       description: 'Kratos Username',
                       type: 'string',
                     },
-                    password: {
-                      description: 'Kratos Password',
+                    passwordSecretRef: {
+                      description: 'Kratos Password Secret Reference',
+                      type: 'string',
+                    },
+                    passwordSecretNamespace: {
+                      description: 'Kratos Password Secret Namespace',
                       type: 'string',
                     },
                   },
@@ -125,7 +143,7 @@ local gateway = import '../../lib/networking/gateway.libsonnet';
     kind: 'Composition',
     metadata: {
       name: 'kratos-user-yaml',
-      namespace: 'default',
+      namespace: namespaces.crossplane_system,
     },
     spec: {
       compositeTypeRef: {
@@ -170,7 +188,7 @@ local gateway = import '../../lib/networking/gateway.libsonnet';
                       mappings: [
                         {
                           action: 'CREATE',
-                          body: '{"credentials": {"password": {"config": {"password": .payload.body.password}}}, "schema_id": "default", "traits": {"username":.payload.body.username}}',
+                          body: '{"credentials": {"password": {"config": {"password": .payload.body.password }}}, "schema_id": "default", "traits": {"username":.payload.body.username}}',
                           headers: {
                             'Content-Type': [
                               'application/json',
@@ -232,12 +250,15 @@ local gateway = import '../../lib/networking/gateway.libsonnet';
                           fromFieldPath: 'spec.username',
                         },
                         {
-                          fromFieldPath: 'spec.password',
+                          fromFieldPath: 'spec.passwordSecretRef',
+                        },
+                        {
+                          fromFieldPath: 'spec.passwordSecretNamespace',
                         },
                       ],
                       strategy: 'string',
                       string: {
-                        fmt: '{"username": "%s", "password": "%s"}',
+                        fmt: '{"username": "%s", "password": "{{ %s:%s:password }}"}',
                       },
                     },
                     toFieldPath: 'spec.forProvider.payload.body',
@@ -256,18 +277,22 @@ local gateway = import '../../lib/networking/gateway.libsonnet';
       ],
     },
   },
-  kratos_user_hema: {
-    apiVersion: 'auth.telesto.crossplane.io/v1',
-    kind: 'KratosUser',
-    metadata: {
-      name: 'john',
-      namespace: 'default',
-    },
-    spec: {
-      username: 'john',
-      password: 'Password1!'
-    },
-  },
+  // kratos_hema_password: k.core.v1.secret.new(secret.kratos.initialUsers[0].username + '-password', {
+  //   password: std.base64(secret.kratos.initialUsers[0].password),
+  // }, 'Opaque'),
+  // kratos_user_hema: {
+  //   apiVersion: 'auth.telesto.crossplane.io/v1',
+  //   kind: 'KratosUser',
+  //   metadata: {
+  //     name: secret.kratos.initialUsers[0].username,
+  //     namespace: 'default',
+  //   },
+  //   spec: {
+  //     username: secret.kratos.initialUsers[0].username,
+  //     passwordSecretRef: secret.kratos.initialUsers[0].username + '-password',
+  //     passwordSecretNamespace: 'default',
+  //   },
+  // },
 
   // telesto db infra
   telesto_db_operator: helm.template('telesto-db-operator', '../../charts/cloudnative-pg', {
@@ -462,8 +487,9 @@ local gateway = import '../../lib/networking/gateway.libsonnet';
 
   // MONITORING
   // object storage
+  ns_storge: ns(namespaces.storage),
   ob_storage: helm.template('ob-storage', '../../charts/rustfs', {
-    namespace: 'default',
+    namespace: namespaces.storage,
     values: {
       mode: {
         distributed: {
@@ -497,6 +523,7 @@ local gateway = import '../../lib/networking/gateway.libsonnet';
     kind: 'Gateway',
     metadata: {
       name: 'gateway-rustfs-console',
+      namespace: namespaces.storage,
       annotations: {
         'cert-manager.io/cluster-issuer': 'local-cluster-issuer',
       },
@@ -540,6 +567,7 @@ local gateway = import '../../lib/networking/gateway.libsonnet';
     kind: 'HTTPRoute',
     metadata: {
       name: 'http-route-rustfs-console-http-to-https-redirect',
+      namespace: namespaces.storage,
     },
     spec: {
       parentRefs: [
@@ -572,6 +600,7 @@ local gateway = import '../../lib/networking/gateway.libsonnet';
     kind: 'HTTPRoute',
     metadata: {
       name: 'http-route-rustfs-console',
+      namespace: namespaces.storage,
     },
     spec: {
       parentRefs: [
