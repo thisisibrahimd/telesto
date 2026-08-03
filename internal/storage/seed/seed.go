@@ -28,7 +28,6 @@ func SeedSenario1(sto *storage.Storage, oryClient *ory.APIClient) error {
 	// identities, ListIdentitiesRes, err := oryClient.IdentityAPI.ListIdentities(ctx).Execute()
 	identities, _, err := oryClient.IdentityAPI.ListIdentities(ctx).Execute()
 	if err != nil {
-
 	}
 
 	alice, err := getIdentity(identities, "alice")
@@ -51,11 +50,11 @@ func SeedSenario1(sto *storage.Storage, oryClient *ory.APIClient) error {
 		},
 	}
 
-	err = sto.Query.Otelcol.WithContext(ctx).CreateInBatches(otelcols, 1)
-	if err != nil {
-		return err
+	for _, o := range otelcols {
+		if err := sto.CreateOtelcol(ctx, o); err != nil {
+			return err
+		}
 	}
 
-	return err
-
+	return nil
 }
