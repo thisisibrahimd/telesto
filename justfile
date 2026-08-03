@@ -16,9 +16,6 @@ sops *ARGS:
 start-live:
     reflex -r '.go$' -R '^templates/' -s -- just start
 
-start:
-    goreman -f ./procfile start
-
 test:
     go test -v ./...
 

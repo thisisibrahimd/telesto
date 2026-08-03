@@ -17,6 +17,10 @@ tk:
 	tk $(TANKA_ARGS)
 
 ### go server
+.PHONY: test
+test:
+	go test ./...
+
 .PHONY: build
 build:
 	goreleaser release --snapshot --clean

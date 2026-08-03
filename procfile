@@ -1,5 +1,0 @@
-api: just start-server
-auth: just start-auth
-init-auth: just init-auth
-db: just start-db
-# init-db: just init-db
