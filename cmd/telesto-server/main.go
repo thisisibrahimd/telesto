@@ -17,7 +17,6 @@ func main() {
 	ctx := context.Background()
 
 	// register commands
-	// telestoCmd.AddCommand(cli.NewMigrateCommand())
 	telestoCmd.AddCommand(cli.NewServeCommand())
 
 	// launch command

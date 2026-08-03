@@ -30,6 +30,10 @@ repositories:
   url: oci://ghcr.io/nginx/charts
 - name: crossplane-stable
   url: https://charts.crossplane.io/stable
+- name: dex
+  url: https://charts.dexidp.io
+- name: linkerd-edge
+  url: https://helm.linkderd.io/edge
 requires:
 - chart: open-telemetry/opentelemetry-collector
   version: 0.138.1
@@ -56,9 +60,9 @@ requires:
 - chart: ory/kratos-selfservice-ui-node
   version: 0.61.1
 - chart: cnpg/cloudnative-pg
-  version: 0.28.0
+  version: 0.29.0
 - chart: cnpg/cluster
-  version: 0.6.0
+  version: 0.7.0
 - chart: openobserve/openobserve
   version: 0.80.1
 - chart: openobserve/openobserve-standalone
@@ -71,8 +75,8 @@ requires:
   version: 2.5.1
 - chart: crossplane-stable/crossplane
   version: 2.3.2
-- chart: ory/hydra
-  version: 0.62.1
 - chart: open-telemetry/opentelemetry-operator
   version: 0.58.0
+- chart: dex/dex
+  version: 0.24.1
 version: 1
