@@ -8,7 +8,7 @@
           "subdir": "ksonnet-util"
         }
       },
-      "version": "5a6567a1aba8ead9f159bcbe9091ab5b0956ecfe",
+      "version": "17c758609bfd9e37c62668b9778e540256147d75",
       "sum": "0y3AFX9LQSpfWTxWKSwoLgbt0Wc9nnCwhMH2szKzHv0="
     },
     {
@@ -18,8 +18,28 @@
           "subdir": "tanka-util"
         }
       },
-      "version": "5a6567a1aba8ead9f159bcbe9091ab5b0956ecfe",
+      "version": "17c758609bfd9e37c62668b9778e540256147d75",
       "sum": "ShSIissXdvCy1izTCDZX6tY7qxCoepE5L+WJ52Hw7ZQ="
+    },
+    {
+      "source": {
+        "git": {
+          "remote": "https://github.com/jsonnet-libs/cert-manager-libsonnet.git",
+          "subdir": "1.19"
+        }
+      },
+      "version": "ae8dca53562a92f87ed183b9d4b02bff69b51c39",
+      "sum": "PgUZyMDmXf6KwDtjWNT3YWKg1kLt/MkTSQZjf6Ni+G8="
+    },
+    {
+      "source": {
+        "git": {
+          "remote": "https://github.com/jsonnet-libs/cloudnative-pg-libsonnet.git",
+          "subdir": "1.27.0"
+        }
+      },
+      "version": "c35ddf17f2ea3cd302bcec0bb941471e2ee2a743",
+      "sum": "6yboNuNsGX1SfPTJ89KOT52X0YZ9NSHhB1ttjHEs4FI="
     },
     {
       "source": {
@@ -34,12 +54,32 @@
     {
       "source": {
         "git": {
+          "remote": "https://github.com/jsonnet-libs/gateway-api-libsonnet.git",
+          "subdir": "1.5"
+        }
+      },
+      "version": "3fa622d87a7ec729c063e6d83a3911c726c83414",
+      "sum": "mhi0HdXGwpESFA6/IDE2btERJRoU24mbtIVjHP62in4="
+    },
+    {
+      "source": {
+        "git": {
           "remote": "https://github.com/jsonnet-libs/k8s-libsonnet.git",
           "subdir": "1.35"
         }
       },
       "version": "ee5c4c5ee02571eaf82f1170c60af47eee5496be",
       "sum": "B+1kudlxnkbH6warwOHHh+gmADl2w5VFJQ5D0SxcO6M="
+    },
+    {
+      "source": {
+        "git": {
+          "remote": "https://github.com/jsonnet-libs/k8s.git",
+          "subdir": "jsonnet"
+        }
+      },
+      "version": "e122de08cff0e3fafee6f9515cb1da37d121858a",
+      "sum": "82UMaK+TTf3u8yaIBAJ85kMPAX3/qGI1SGRWGYkwltw="
     }
   ],
   "legacyImports": false
