@@ -1,0 +1,33 @@
+package telestos
+
+import "github.com/thisisibrahimd/telesto/templates/layouts"
+
+type TelestoModel struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+templ Show(telesto TelestoModel) {
+	@layouts.Console("Telesto | Telestos") {
+		<div class="mb-6">
+			<a href="/telestos" class="text-sm text-indigo-600 hover:text-indigo-900">&larr; Back to Telestos</a>
+		</div>
+		<div class="bg-white rounded-lg shadow p-6">
+			<h2 class="text-2xl font-bold text-gray-900 mb-6">Telesto Details</h2>
+			<dl class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+				<div>
+					<dt class="text-sm font-medium text-gray-500">ID</dt>
+					<dd class="mt-1 text-sm font-mono text-gray-900">{ telesto.ID }</dd>
+				</div>
+				<div>
+					<dt class="text-sm font-medium text-gray-500">Name</dt>
+					<dd class="mt-1 text-sm text-gray-900">{ telesto.Name }</dd>
+				</div>
+			</dl>
+			<div class="mt-6 flex items-center gap-3">
+				<a href={ "/telestos/edit/" + telesto.ID } class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors">Edit</a>
+				<button class="inline-flex items-center px-4 py-2 text-sm font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">Delete</button>
+			</div>
+		</div>
+	}
+}

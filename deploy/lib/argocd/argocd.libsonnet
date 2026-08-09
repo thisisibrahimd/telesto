@@ -1,7 +1,7 @@
 local tanka = import 'github.com/grafana/jsonnet-libs/tanka-util/main.libsonnet';
 local helm = tanka.helm.new(std.thisFile);
 local kustomize = tanka.kustomize.new(std.thisFile);
-local k = import 'ksonnet-util/kausal.libsonnet';
+local k = import "github.com/grafana/jsonnet-libs/ksonnet-util/kausal.libsonnet";
 
 local netutil = import '../../lib/util/net.libsonnet';
 

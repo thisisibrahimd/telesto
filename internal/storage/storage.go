@@ -5,7 +5,7 @@ import (
 
 	"github.com/mdobak/go-xerrors"
 	"github.com/thisisibrahimd/telesto/internal/storage/model"
-	"github.com/thisisibrahimd/telesto/internal/storage/query"
+	"github.com/thisisibrahimd/telesto/internal/storage/repository"
 	"github.com/thisisibrahimd/telesto/internal/telemetry"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -33,12 +33,15 @@ func DefaultConfig() *Config {
 
 type Storage struct {
 	config *Config
-	query  *query.Query
 	db     *gorm.DB
+	Repos  struct {
+		Telesto repository.RepoByUser[model.Telesto]
+		Token   repository.RepoByUserAndTelesto[model.Token]
+	}
 }
 
 func (s *Storage) Migrate() error {
-	err := s.db.AutoMigrate(&model.Otelcol{})
+	err := s.db.AutoMigrate(&model.Telesto{}, &model.Token{})
 	if err != nil {
 		return xerrors.New("automigration failed", err)
 	}
@@ -47,7 +50,7 @@ func (s *Storage) Migrate() error {
 }
 
 func (s *Storage) Wipe() error {
-	err := s.db.Migrator().DropTable(&model.Otelcol{})
+	err := s.db.Migrator().DropTable(&model.Telesto{}, &model.Token{})
 	if err != nil {
 		return xerrors.New("dropping of tables failed", err)
 	}
@@ -78,6 +81,8 @@ func NewStorage(cfg *Config) (*Storage, error) {
 		db, err = gorm.Open(postgres.Open(sto.config.DSN), &gorm.Config{
 			Logger: sto.config.GormLogger,
 		})
+	default:
+		err = xerrors.New("unsupported db")
 	}
 
 	if err != nil {
@@ -85,7 +90,10 @@ func NewStorage(cfg *Config) (*Storage, error) {
 	}
 
 	sto.db = db
-	sto.query = query.Use(db)
+
+	// init repos
+	sto.Repos.Telesto = repository.NewTelestoRepo(sto.db)
+	sto.Repos.Token = repository.NewTokenRepo(sto.db)
 
 	err = sto.EnsureDBReady()
 	if err != nil {

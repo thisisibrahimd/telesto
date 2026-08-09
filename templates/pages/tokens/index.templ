@@ -1,0 +1,46 @@
+package tokens
+
+import "github.com/thisisibrahimd/telesto/templates/layouts"
+
+type TokensViewModel struct {
+	Tokens []*TokenModel
+}
+
+templ Index(model TokensViewModel) {
+	@layouts.Console("Telesto | Tokens") {
+		<div class="flex items-center justify-between mb-6">
+			<h2 class="text-2xl font-bold text-gray-900">Your Tokens</h2>
+			<a href="/tokens/new" class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors">
+				+ Create New
+			</a>
+		</div>
+		<div class="bg-white rounded-lg shadow overflow-hidden">
+			<table class="min-w-full divide-y divide-gray-200">
+				<thead class="bg-gray-50">
+					<tr>
+						<th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">ID</th>
+						<th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Name</th>
+						<th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Telesto</th>
+					</tr>
+				</thead>
+				<tbody class="divide-y divide-gray-200">
+					for _, r := range model.Tokens {
+						<tr class="hover:bg-gray-50 transition-colors">
+							<td class="px-6 py-4 text-sm font-mono text-gray-500">{ r.ID }</td>
+							<td class="px-6 py-4 text-sm font-medium text-gray-900">
+								<a href={ "/tokens/" + r.ID } class="hover:text-indigo-600 transition-colors">{ r.Name }</a>
+							</td>
+							<td class="px-6 py-4 text-sm text-gray-900">
+							if r.Telesto != nil {
+								<a href={ "/telestos/" + r.Telesto.ID } class="hover:text-indigo-600 transition-colors">{ r.Telesto.Name }</a>
+							} else {
+								<span class="text-gray-500">{ r.TelestoID }</span>
+							}
+						</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	}
+}

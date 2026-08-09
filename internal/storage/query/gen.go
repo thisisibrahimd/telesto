@@ -13,25 +13,29 @@ import (
 
 var (
 	Q       = new(Query)
-	Otelcol *otelcol
+	Telesto *telesto
+	Token   *token
 )
 
 func SetDefault(db *gorm.DB) {
 	*Q = *Use(db)
-	Otelcol = &Q.Otelcol
+	Telesto = &Q.Telesto
+	Token = &Q.Token
 }
 
 func Use(db *gorm.DB) *Query {
 	return &Query{
 		db:      db,
-		Otelcol: newOtelcol(db),
+		Telesto: newTelesto(db),
+		Token:   newToken(db),
 	}
 }
 
 type Query struct {
 	db *gorm.DB
 
-	Otelcol otelcol
+	Telesto telesto
+	Token   token
 }
 
 func (q *Query) Available() bool { return q.db != nil }
@@ -39,17 +43,20 @@ func (q *Query) Available() bool { return q.db != nil }
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
 		db:      db,
-		Otelcol: q.Otelcol.clone(db),
+		Telesto: q.Telesto.clone(db),
+		Token:   q.Token.clone(db),
 	}
 }
 
 type queryCtx struct {
-	Otelcol otelcolDo
+	Telesto telestoDo
+	Token   tokenDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
-		Otelcol: *q.Otelcol.WithContext(ctx),
+		Telesto: *q.Telesto.WithContext(ctx),
+		Token:   *q.Token.WithContext(ctx),
 	}
 }
 

@@ -1,5 +1,5 @@
-local k = import '../k.libsonnet';
 local tanka = import 'github.com/grafana/jsonnet-libs/tanka-util/main.libsonnet';
+local k = import "github.com/grafana/jsonnet-libs/ksonnet-util/kausal.libsonnet";
 local helm = tanka.helm.new(std.thisFile);
 
 local cm = import 'github.com/jsonnet-libs/cert-manager-libsonnet/1.19/main.libsonnet';

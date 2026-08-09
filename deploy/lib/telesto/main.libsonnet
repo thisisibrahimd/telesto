@@ -1,6 +1,6 @@
 local tanka = import 'github.com/grafana/jsonnet-libs/tanka-util/main.libsonnet';
+local k = import "github.com/grafana/jsonnet-libs/ksonnet-util/kausal.libsonnet";
 local helm = tanka.helm.new(std.thisFile);
-local k = import 'ksonnet-util/kausal.libsonnet';
 
 local netutil = import '../util/net.libsonnet';
 local dnsutil = import '../../lib/util/dns.libsonnet';
@@ -17,7 +17,7 @@ local service = k.core.v1.service;
 {
   _config+:: {
     _global: {
-      namespace: 'telesto',
+      namespace: 'app',
     },
     clusterIssuerRefName: '',
     telesto: {
@@ -87,7 +87,7 @@ local service = k.core.v1.service;
               },
               storage: {
                 migrate: true,
-                dsn: 'postgres://telesto-app@telesto-db-cluster-rw.telesto:5432/telesto?sslmode=verify-full&sslrootcert=/etc/secrets/db/ca.crt&sslcert=/etc/secrets/db/tls.crt&sslkey=/etc/secrets/db/tls.key',
+                dsn: 'postgres://telesto-app@telesto-db-cluster-rw.app:5432/telesto?sslmode=verify-full&sslrootcert=/etc/secrets/db/ca.crt&sslcert=/etc/secrets/db/tls.crt&sslkey=/etc/secrets/db/tls.key',
               },
             }),
           })
@@ -111,12 +111,12 @@ local service = k.core.v1.service;
     },
   },
 
-  secret_cert_db_telesto_server: k.core.v1.secret.new('cert-db-telesto-server', {}, 'kubernetes.io/tls')
+  secretCertDBTelestoServer: k.core.v1.secret.new('cert-db-telesto-server', {}, 'kubernetes.io/tls')
                                  + k.core.v1.secret.metadata.withNamespace($._config._global.namespace)
                                  + k.core.v1.secret.metadata.withLabelsMixin({
                                    'cnpg.io/reload': '',
                                  }),
-  cert_db_telesto_server: cm.nogroup.v1.certificate.new('db-telesto-server')
+  certDBTelestoServer: cm.nogroup.v1.certificate.new('db-telesto-server')
                           + cm.nogroup.v1.certificate.metadata.withNamespace($._config._global.namespace)
                           + cm.nogroup.v1.certificate.spec.withIsCA(true)
                           + cm.nogroup.v1.certificate.spec.withCommonName('db-telesto-server')
@@ -125,17 +125,17 @@ local service = k.core.v1.service;
                             'server auth',
                           ])
                           + cm.nogroup.v1.certificate.spec.withDnsNames(
-                            dnsutil.dnsnames.cnpg.new('telesto-db-cluster', 'telesto')
+                            dnsutil.dnsnames.cnpg.new('telesto-db-cluster', $._config._global.namespace)
                           )
                           + cm.nogroup.v1.certificate.spec.privateKey.withAlgorithm('ECDSA')
                           + cm.nogroup.v1.certificate.spec.privateKey.withSize(256)
                           + cm.nogroup.v1.certificate.spec.issuerRef.withName($._config.clusterIssuerRefName)
                           + cm.nogroup.v1.certificate.spec.issuerRef.withKind('ClusterIssuer')
                           + cm.nogroup.v1.certificate.spec.issuerRef.withGroup('cert-manager.io'),
-  issuer_db_teletso_server: cm.nogroup.v1.issuer.new('issuer-db-telesto-server')
+  issuerDBTeletsoServer: cm.nogroup.v1.issuer.new('issuer-db-telesto-server')
                             + cm.nogroup.v1.issuer.metadata.withNamespace($._config._global.namespace)
                             + cm.nogroup.v1.issuer.spec.ca.withSecretName('cert-db-telesto-server'),
-  secret_cert_db_telesto_client: k.core.v1.secret.new('cert-db-telesto-client', {}, 'kubernetes.io/tls')
+  secretCertDBTelestoClient: k.core.v1.secret.new('cert-db-telesto-client', {}, 'kubernetes.io/tls')
                                  + k.core.v1.secret.metadata.withNamespace($._config._global.namespace)
                                  + k.core.v1.secret.metadata.withLabelsMixin({
                                    'cnpg.io/reload': '',
@@ -155,7 +155,7 @@ local service = k.core.v1.service;
                             + cm.nogroup.v1.issuer.metadata.withNamespace($._config._global.namespace)
                             + cm.nogroup.v1.issuer.spec.ca.withSecretName('cert-db-telesto-client'),
   telesto_db_cluster: helm.template('telesto-db', '../../charts/cluster', {
-    namespace: 'telesto',
+    namespace: $._config._global.namespace,
     values: {
       cluster: {
         instances: 1,
@@ -197,12 +197,12 @@ local service = k.core.v1.service;
                               + cm.nogroup.v1.certificate.spec.issuerRef.withName($._config.clusterIssuerRefName)
                               + cm.nogroup.v1.certificate.spec.issuerRef.withKind('ClusterIssuer')
                               + cm.nogroup.v1.certificate.spec.issuerRef.withGroup('cert-manager.io'),
-  telesto_db_role: {
+  telestoDBRole: {
     apiVersion: 'postgresql.cnpg.io/v1',
     kind: 'DatabaseRole',
     metadata: {
       name: 'role-telesto',
-      namespace: 'telesto',
+      namespace: $._config._global.namespace,
     },
     spec: {
       cluster: {
@@ -216,12 +216,12 @@ local service = k.core.v1.service;
       databaseRoleReclaimPolicy: 'delete',
     },
   },
-  telesto_db: {
+  telestoDB: {
     apiVersion: 'postgresql.cnpg.io/v1',
     kind: 'Database',
     metadata: {
       name: 'telesto',
-      namespace: 'telesto',
+      namespace: $._config._global.namespace,
     },
     spec: {
       databaseReclaimPolicy: 'delete',

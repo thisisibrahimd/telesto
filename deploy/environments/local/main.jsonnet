@@ -1,25 +1,18 @@
-// libraries
-local tanka = import 'github.com/grafana/jsonnet-libs/tanka-util/main.libsonnet';
-local helm = tanka.helm.new(std.thisFile);
-local k = import 'ksonnet-util/kausal.libsonnet';
-
 // util
-local netutil = import '../../lib/util/net.libsonnet';
 local nsutil = import '../../lib/util/ns.libsonnet';
 
 // namespace management
 local _namespaces = [
   'argocd',
-  'telesto',
+  'app',
   'storage',
   'monitoring',
   'auth',
   'nginx-gateway',
   'cert-manager',
   'cnpg-system',
+  'telestos',
 ];
-// local namespaces = { ['ns_' + std.strReplace(n, '-', '_')]: n for n in _namespaces };
-local namespaces = { ['ns_' + std.strReplace(n, '-', '_')]: { name: n, namespace: nsutil.ns(n) } for n in _namespaces };
 
 // secrets
 local secret_json = std.extVar('secret_json');
@@ -59,13 +52,18 @@ local secret = std.parseJson(secret_json);
   // TELESTO APP
   telesto: (import '../../lib/telesto/main.libsonnet') + {
     _config+:: {
+    _global: {
+      namespace: "app"
+    },
       clusterIssuerRefName: $.ca._config.clusterIssuerName,
     },
     _images+:: {
-      telesto: 'ghcr.io/thisisibrahimd/telesto:0.0.3-next-amd64',
+      telesto: 'ghcr.io/thisisibrahimd/telesto:0.0.5-next-amd64',
     },
   },
 
-  // OTELCOL DEPLOYER
-  // otelcoldeployer: ocdeployer.otelcoldeployer.new(),
+  // Telesto DEPLOYER
+  telestodeployer: (import '../../lib/telestodeployer/telestodeployer.libsonnet') + {
+
+  },
 }

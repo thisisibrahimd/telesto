@@ -31,8 +31,13 @@ type Auth struct {
 	Kratos Kratos `mapstructure:"kratos"`
 }
 
+type ArgoCD struct {
+	Token string `mapstructure:"token"`
+}
+
 type ServeConfig struct {
 	Storage Storage `mapstructure:"storage"`
 	Server  Server  `mapstructure:"server"`
 	Auth    Auth    `mapstructure:"auth"`
+	ArgoCD  ArgoCD  `mapstructure:"argocd"`
 }

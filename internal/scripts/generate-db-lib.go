@@ -14,8 +14,8 @@ func main() {
 	})
 
 	g.ApplyBasic(
-		&model.Otelcol{},
+		&model.Telesto{},
+		&model.Token{},
 	)
-
 	g.Execute()
 }
