@@ -41,7 +41,7 @@ cluster-delete:
 .PHONY: gen-libsonnet-libraries
 gen-libsonnet-libraries:
 	k8s-gen --config "./deploy/lib/cloudnative-pg/config.json"
-	k8s-gen --config"./deploy/lib/argocd/config.json"
+	k8s-gen --config "./deploy/lib/argocd/config.json"
 	
 
 ## application
