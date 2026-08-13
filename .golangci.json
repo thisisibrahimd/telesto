@@ -1,0 +1,21 @@
+{
+  "$schema": "https://golangci-lint.run/jsonschema/golangci.jsonschema.json",
+  "version": "2",
+  "linters": {
+    "default": "standard",
+    "exclusions": {
+      "paths": [
+        "deploy/.*",
+        "templates/*"
+      ]
+    }
+  },
+  "formatters": {
+    "exclusions": {
+      "paths": [
+        "deploy/.*",
+        "templates/*"
+      ]
+    }
+  }
+}
