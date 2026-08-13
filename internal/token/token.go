@@ -3,6 +3,7 @@ package token
 import (
 	"crypto/rand"
 	"fmt"
+	"strings"
 )
 
 func Validate(storedToken, providedToken string) bool {
@@ -10,6 +11,6 @@ func Validate(storedToken, providedToken string) bool {
 }
 
 func NewToken() string {
-	t := rand.Text()
+	t := strings.ToLower(rand.Text())
 	return fmt.Sprintf("tel_auth_%s", t)
 }

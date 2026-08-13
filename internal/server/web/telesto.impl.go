@@ -1,6 +1,8 @@
 package web
 
 import (
+	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -42,6 +44,38 @@ func (s *WebServer) GetTelesto(w http.ResponseWriter, r *http.Request) {
 
 	// render
 	telestos.Show(*convertTelesto(userTelesto)).Render(r.Context(), w)
+}
+
+type GetTelestoTokensResponse struct {
+	Tokens string `json:"tokens"`
+}
+
+// GetTelestoTokens implements [WebServerInterface].
+func (s *WebServer) GetTelestoTokens(w http.ResponseWriter, r *http.Request) {
+	telestoID := r.PathValue("id")
+	if telestoID == "" {
+		slog.Error("")
+		return
+	}
+
+	telesto, err := s.storage.Repos.Telesto.Get(r.Context(), telestoID)
+	if err != nil {
+		slog.Error("no telesto", slog.Any("error", err))
+		return
+	}
+
+	resp := &GetTelestoTokensResponse{
+		Tokens: "",
+	}
+	for _, token := range telesto.Tokens {
+		resp.Tokens += fmt.Sprintf("%s # %s\n", token.Token, token.ID)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		slog.Error("failed to encode json response", slog.Any("error", err))
+		return
+	}
 }
 
 // NewTelesto implements [WebServerInterface].
@@ -132,6 +166,11 @@ func (s *WebServer) DeleteTelesto(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if r.Header.Get("HX-Request") == "true" {
+		w.Header().Set("HX-Redirect", "/telestos")
+		w.WriteHeader(http.StatusOK)
+		return
+	}
 	http.Redirect(w, r, "/telestos", http.StatusSeeOther)
 }
 

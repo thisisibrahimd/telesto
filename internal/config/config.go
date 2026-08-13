@@ -33,13 +33,17 @@ type Auth struct {
 	Kratos Kratos `mapstructure:"kratos"`
 }
 
-type ArgoCD struct {
+type TelestoDeployer struct {
+	Token string `mapstructure:"token"`
+}
+type ExternalSecrets struct {
 	Token string `mapstructure:"token"`
 }
 
 type ServeConfig struct {
-	Storage Storage `mapstructure:"storage"`
-	Server  Server  `mapstructure:"server"`
-	Auth    Auth    `mapstructure:"auth"`
-	ArgoCD  ArgoCD  `mapstructure:"argocd"`
+	Storage         Storage         `mapstructure:"storage"`
+	Server          Server          `mapstructure:"server"`
+	Auth            Auth            `mapstructure:"auth"`
+	TelestoDeployer TelestoDeployer `mapstructure:"telestoDeployer"`
+	ExternalSecrets ExternalSecrets `mapstructure:"externalSecrets"`
 }

@@ -167,6 +167,11 @@ func (s *WebServer) DeleteToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if r.Header.Get("HX-Request") == "true" {
+		w.Header().Set("HX-Redirect", "/tokens")
+		w.WriteHeader(http.StatusOK)
+		return
+	}
 	http.Redirect(w, r, "/tokens", http.StatusSeeOther)
 }
 

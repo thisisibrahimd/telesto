@@ -1,6 +1,8 @@
 package model
 
 import (
+	"strings"
+
 	"github.com/oklog/ulid/v2"
 	"gorm.io/gorm"
 )
@@ -13,7 +15,12 @@ type Telesto struct {
 }
 
 func (t *Telesto) BeforeCreate(tx *gorm.DB) (err error) {
-	t.ID = ulid.Make().String()
+	t.ID = strings.ToLower(ulid.Make().String())
+	return
+}
+
+func (t *Telesto) AfterFind(tx *gorm.DB) (err error) {
+	t.ID = strings.ToLower(t.ID)
 	return
 }
 

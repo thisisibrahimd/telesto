@@ -27,6 +27,8 @@ type WebServerInterface interface {
 	GetTelestos(w http.ResponseWriter, r *http.Request)
 	// GET /telestos/{id}
 	GetTelesto(w http.ResponseWriter, r *http.Request)
+	// GET /telestos/{id}/tokens
+	GetTelestoTokens(w http.ResponseWriter, r *http.Request)
 	// GET /telestos/new
 	NewTelesto(w http.ResponseWriter, r *http.Request)
 	// POST /telestos/new
@@ -62,6 +64,7 @@ func Handler(r chi.Router, protected func(http.Handler) http.Handler, w WebServe
 
 	r.Post("/api/v1/getparams.execute", http.HandlerFunc(w.ExecuteParams))
 
+	r.Get("/telestos/{id}/tokens", http.HandlerFunc(w.GetTelestoTokens))
 	// protected routes
 	r.Group(func(r chi.Router) {
 		r.Use(protected)

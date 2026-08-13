@@ -28,6 +28,7 @@ func (r *TelestoRepo) ByUser(id string) Repo[model.Telesto] {
 func (r *TelestoRepo) GetAll(ctx context.Context) ([]*model.Telesto, error) {
 	return r.query().
 		Telesto.WithContext(ctx).
+		Preload(r.query().Telesto.Tokens).
 		Find()
 }
 
@@ -35,6 +36,7 @@ func (r *TelestoRepo) Get(ctx context.Context, id string) (*model.Telesto, error
 	return r.query().
 		Telesto.WithContext(ctx).
 		Where(r.query().Telesto.ID.Eq(id)).
+		Preload(r.query().Telesto.Tokens).
 		First()
 }
 
@@ -48,6 +50,7 @@ func (r *TelestoRepo) Edit(ctx context.Context, id string, otelcol *model.Telest
 	return r.query().
 		Telesto.WithContext(ctx).
 		Where(r.query().Telesto.ID.Eq(id)).
+		Preload(r.query().Telesto.Tokens).
 		Updates(otelcol)
 }
 
@@ -55,6 +58,7 @@ func (r *TelestoRepo) Delete(ctx context.Context, id string) (gen.ResultInfo, er
 	return r.query().
 		Telesto.WithContext(ctx).
 		Where(r.query().Telesto.ID.Eq(id)).
+		Preload(r.query().Telesto.Tokens).
 		Delete()
 }
 

@@ -8,23 +8,11 @@ import (
 
 // ExecuteParams implements [WebServerInterface].
 func (s *WebServer) ExecuteParams(w http.ResponseWriter, r *http.Request) {
-	type PluginInputParams struct {
-		// The parameters passed in the ApplicationSet spec.generators.plugin.parameters field
-		Parameters map[string]interface{} `json:"parameters"`
-	}
-	type PluginInput struct {
-		ApplicationSetName string            `json:"applicationSetName"`
-		Input              PluginInputParams `json:"input"`
-	}
 	type PluginOutputParams struct {
-		// Must be a list of object maps. Each map becomes a set of parameters for a new Application.
-		Parameters []map[string]interface{} `json:"parameters"`
+		Parameters []map[string]any `json:"parameters"`
 	}
 	type PluginOutput struct {
 		Output PluginOutputParams `json:"output"`
-	}
-	type GetParamsExecutePostResponse struct {
-		Body PluginOutput
 	}
 
 	telestos, err := s.storage.Repos.Telesto.GetAll(r.Context())
@@ -35,15 +23,20 @@ func (s *WebServer) ExecuteParams(w http.ResponseWriter, r *http.Request) {
 
 	output := &PluginOutput{
 		Output: PluginOutputParams{
-			Parameters: []map[string]interface{}{},
+			Parameters: []map[string]any{},
 		},
 	}
 
 	for _, telesto := range telestos {
-		output.Output.Parameters = append(output.Output.Parameters, map[string]interface{}{
+		tokenMap := map[string]string{}
+		for _, token := range telesto.Tokens {
+			tokenMap[token.ID] = token.Token
+		}
+		output.Output.Parameters = append(output.Output.Parameters, map[string]any{
 			"telesto": map[string]any{
-				"id":   strings.ToLower(telesto.ID),
-				"name": strings.ToLower(telesto.Name),
+				"id":              strings.ToLower(telesto.ID),
+				"name":            strings.ToLower(telesto.Name),
+				"tokensAvailable": len(telesto.Tokens) > 0,
 			},
 		})
 	}
