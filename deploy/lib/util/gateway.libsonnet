@@ -1,35 +1,81 @@
 local gw = import 'github.com/jsonnet-libs/gateway-api-libsonnet/1.5/main.libsonnet';
-local gatewayv1 = gw.gateway.v1;
+local gateway = gw.gateway.v1.gateway;
+local listenerSet = gw.gateway.v1.listenerSet;
+local httpRoute = gw.gateway.v1.httpRoute;
 
 {
   _config:: {
+    _global: {
+      namespace: '',
+    },
     name: '',
-    namespace: '',
+    hostname: '',
     gatewayClassName: '',
+
+    issuerRef: {
+      name: '',
+      kind: '',
+      group: 'cert-manager.io',
+    },
+
+    listeners: {
+      http: {
+        port: 80,
+      },
+      https: {
+        port: 443,
+      },
+    },
+
+    svc: {
+      name: '',
+      port: 80,
+    },
   },
 
-  gateway: gatewayv1.gateway.new('gateway-' + $._config.name)
-           + gatewayv1.gateway.metadata.withNamespace($._config._global.namespace)
-           + gatewayv1.gateway.metadata.withAnnotationsMixin({ 'cert-manager.io/cluster-issuer': $._config.issuerRef.name })
-           + gatewayv1.gateway.spec.withGatewayClassName($._config.gatewayClassName)
-           + gatewayv1.gateway.spec.withListenersMixin(
-             gatewayv1.gateway.spec.listeners.withName('http')
-             + gatewayv1.gateway.spec.listeners.withPort(80)
-             + gatewayv1.gateway.spec.listeners.withProtocol('HTTP')
-             + gatewayv1.gateway.spec.listeners.withHostname($._config.hostname)
-           )
-           + gatewayv1.gateway.spec.withListenersMixin(
-             gatewayv1.gateway.spec.listeners.withName('https')
-             + gatewayv1.gateway.spec.listeners.withPort(443)
-             + gatewayv1.gateway.spec.listeners.withProtocol('HTTPS')
-             + gatewayv1.gateway.spec.listeners.withHostname($._config.hostname)
-             + gatewayv1.gateway.spec.listeners.allowedRoutes.namespaces.withFrom('Same')
-             + gatewayv1.gateway.spec.listeners.tls.withMode('Terminate')
-             + gatewayv1.gateway.spec.listeners.tls.withCertificateRefs(
-               gatewayv1.gateway.spec.listeners.tls.certificateRefs.withKind('Secret')
-               + gatewayv1.gateway.spec.listeners.tls.certificateRefs.withName('tls-' + std.join('-', std.reverse(std.split($._config.hostname, '.'))))
-               + gatewayv1.gateway.spec.listeners.tls.certificateRefs.withNamespace($._config._global.namespace)
-             )
-           ),
+  gatewayName:: 'gateway-' + $._config.name,
+  gateway: gateway.new($.gatewayName)
+           + gateway.metadata.withNamespace($._config._global.namespace)
+           + gateway.metadata.withAnnotationsMixin({ 'cert-manager.io/issuer-name': $._config.issuerRef.name })
+           + gateway.metadata.withAnnotationsMixin({ 'cert-manager.io/issuer-kind': $._config.issuerRef.kind })
+           + gateway.metadata.withAnnotationsMixin({ 'cert-manager.io/issuer-group': $._config.issuerRef.group })
+           + gateway.spec.withGatewayClassName($._config.gatewayClassName)
+           + gateway.spec.allowedListeners.namespaces.withFrom('Same'),
+
+  listenerSetParentRef:: listenerSet.spec.parentRef.withName($.gatewayName)
+                         + listenerSet.spec.parentRef.withKind('Gateway')
+                         + listenerSet.spec.parentRef.withGroup('gateway.networking.k8s.io'),
+
+  listenerSetHTTPName: 'listener-' + $._config.name + '-http',
+  listenerSetHTTP: listenerSet.new($.listenerSetHTTPName)
+                   + listenerSet.metadata.withNamespace($._config._global.namespace)
+                   + listenerSet.spec.withListeners(
+                     listenerSet.spec.listeners.withName('http')
+                     + listenerSet.spec.listeners.withPort($._config.listeners.http.port)
+                     + listenerSet.spec.listeners.withProtocol('HTTP')
+                     + listenerSet.spec.listeners.withHostname($._config.hostname)
+                     + listenerSet.spec.listeners.allowedRoutes.namespaces.withFrom('Same')
+                   )
+                   + $.listenerSetParentRef,
+
+  reverseHostname:: std.join('-', std.reverse(std.split($._config.hostname, '.'))),
+  secretName:: 'tls' - $.reverseHostname,
+  listenerSetHTTPSName: 'listener-' + $._config.name + '-https',
+  listenerSetHTTPS: listenerSet.new($.listenerSetHTTPSName)
+                    + listenerSet.metadata.withNamespace($._config._global.namespace)
+                    + listenerSet.spec.withListeners(
+                      listenerSet.spec.listeners.withName('https')
+                      + listenerSet.spec.listeners.withPort($._config.listeners.https.port)
+                      + listenerSet.spec.listeners.withProtocol('HTTPS')
+                      + listenerSet.spec.listeners.withHostname($._config.hostname)
+                      + listenerSet.spec.listeners.allowedRoutes.namespaces.withFrom('Same')
+                      + listenerSet.spec.listeners.tls.withMode('Terminate')
+                      + listenerSet.spec.listeners.tls.withCertificateRefs(
+                        listenerSet.spec.listeners.tls.certificateRefs.withKind('Secret')
+                        + listenerSet.spec.listeners.tls.certificateRefs.withName($.reverseHostname)
+                        + listenerSet.spec.listeners.tls.certificateRefs.withNamespace($._config._global.namespace)
+                      )
+                    )
+                    + $.listenerSetParentRef,
 
 }

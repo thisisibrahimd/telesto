@@ -1,8 +1,11 @@
-local k = import "github.com/grafana/jsonnet-libs/ksonnet-util/kausal.libsonnet";
+local k = import 'github.com/grafana/jsonnet-libs/ksonnet-util/kausal.libsonnet';
 
-local argo = import '../argocd/3.4.1/main.libsonnet';
-local argov1alpha1 = argo.argoproj.v1alpha1;
+local argo = import '../argocd-crds/3.4.1/main.libsonnet';
+local project = argo.argoproj.v1alpha1.appProject;
 local applicationset = argo.argoproj.v1alpha1.applicationSet;
+
+local es = import '../external-secrets-crds/2.9.0/main.libsonnet';
+local externalSecret = es.nogroup.v1.externalSecret;
 
 {
   local configmap = k.core.v1.configMap,
@@ -12,40 +15,48 @@ local applicationset = argo.argoproj.v1alpha1.applicationSet;
       namespace: 'telestos',
     },
 
+    argocdNamespace: 'argocd',
+
     clusterIssuerRefName: '',
 
     helmChartRepo: 'https://open-telemetry.github.io/opentelemetry-helm-charts',
     chart: 'opentelemetry-collector',
-    chartVersion: '0.138.1',
-    tokenName: 'plugin.telestodeployer.token',
+    chartVersion: '0.158.0',
+
+    telestoDeployerToken: '',
   },
   _images:: {
   },
 
   secret: k.core.v1.secret.new('telestodeployer-plugin', {
-            [$._config.tokenName]: std.base64("asdfjkl;"),
+            token: $._config.telestoDeployerToken,
           }, 'Opaque')
-          + k.core.v1.secret.metadata.withNamespace($._config._global.namespace)
+          + k.core.v1.secret.metadata.withNamespace('argocd')
           + k.core.v1.secret.metadata.withLabelsMixin({
             'app.kubernetes.io/part-of': 'argocd',
           }),
-  configmap: {
-    argo_cm_plugin: configmap.new(
-      name='telestodeployer-plugin-config',
-      data={
-        token: '$' + $._config.tokenName,
-        baseUrl: 'http://telesto:9000',
-        requestTimeout: '60',
-      }
-    ),
-  },
+
+  configmap: configmap.new(
+               name='telestodeployer-plugin-config',
+               data={
+                 token: '$telestodeployer-plugin:token',
+                 baseUrl: 'http://telesto.app:443',
+                 requestTimeout: '60',
+               }
+             )
+             // currently in argocd namespace due to limits. waiting for this pr: https://github.com/argoproj/argo-cd/pull/21044
+             // + configmap.metadata.withNamespace($._config._global.namespace),
+             + configmap.metadata.withNamespace('argocd'),
   otelcolHelmChartValues:: {
     mode: 'deployment',
     image: {
-      repository: 'otel/opentelemetry-collector',
+      repository: 'otel/opentelemetry-collector-contrib',
     },
     command: {
-      name: 'otelcol',
+      name: 'otelcol-contrib',
+    },
+    annotations: {
+      'reloader.stakater.com/auto': 'true',
     },
     ingress: {
       enabled: false,
@@ -68,12 +79,31 @@ local applicationset = argo.argoproj.v1alpha1.applicationSet;
       },
     },
 
+    extraVolumes: [
+      {
+        name: 'telesto-tokens',
+        secret: {
+          secretName: 'telesto-tokens',
+        },
+      },
+    ],
+
+    extraVolumeMounts: [
+      {
+        name: 'telesto-tokens',
+        mountPath: '/etc/secrets/auth',
+      },
+    ],
+
 
     alternateConfig: {
       exporters: {
         debug: {},
       },
       extensions: {
+        'bearertokenauth/telestotokenauth': {
+          filename: '/etc/secrets/auth/telesto.tokens',
+        },
         health_check: {
           endpoint: '${env:MY_POD_IP}:13133',
         },
@@ -87,46 +117,59 @@ local applicationset = argo.argoproj.v1alpha1.applicationSet;
         },
       },
       receivers: {
-        otlp: {
+        'otlp/auth': {
           protocols: {
             http: {
               endpoint: '${env:MY_POD_IP}:4318',
+              auth: {
+                authenticator: 'bearertokenauth/telestotokenauth',
+              },
             },
           },
         },
-        zipkin: {
-          endpoint: '${env:MY_POD_IP}:9411',
+        'nop/blocked': {
         },
       },
       service: {
-        extensions: ['health_check'],
+        extensions: ['health_check', 'bearertokenauth/telestotokenauth'],
         pipelines: {
           logs: {
             exporters: ['debug'],
             processors: ['memory_limiter', 'batch'],
-            receivers: ['otlp'],
+            receivers: ['{{ if .telesto.tokensAvailable }}otlp/auth{{else}}nop/blocked{{ end }}'],
           },
           metrics: {
             exporters: ['debug'],
             processors: ['memory_limiter', 'batch'],
-            receivers: ['otlp'],
+            receivers: ['{{ if .telesto.tokensAvailable }}otlp/auth{{else}}nop/blocked{{ end }}'],
           },
           traces: {
             exporters: ['debug'],
             processors: ['memory_limiter', 'batch'],
-            receivers: ['otlp'],
+            receivers: ['{{ if .telesto.tokensAvailable }}otlp/auth{{else}}nop/blocked{{ end }}'],
           },
         },
       },
     },
 
     extraManifests: [
+      externalSecret.new('telesto-tokens')
+      + externalSecret.metadata.withNamespace('telesto-{{.telesto.id}}')
+      + externalSecret.spec.secretStoreRef.withName('telesto-cluster-secret-store')
+      + externalSecret.spec.secretStoreRef.withKind('ClusterSecretStore')
+      + externalSecret.spec.withRefreshInterval('3s')
+      + externalSecret.spec.target.withName('telesto-tokens')
+      + externalSecret.spec.target.withDeletionPolicy('Delete')
+      + externalSecret.spec.withData(
+        externalSecret.spec.data.withSecretKey('telesto.tokens')
+        + externalSecret.spec.data.remoteRef.withKey('{{.telesto.id}}')
+      ),
       {
         apiVersion: 'gateway.networking.k8s.io/v1',
         kind: 'Gateway',
         metadata: {
-          name: 'gateway-telesto-{{.otelcol.id}}',
-          namespace: $._config._global.namespace,
+          name: 'gateway-telesto-{{.telesto.id}}',
+          namespace: 'telesto-{{.telesto.id}}',
           annotations: {
             'cert-manager.io/cluster-issuer': $._config.clusterIssuerRefName,
           },
@@ -149,7 +192,6 @@ local applicationset = argo.argoproj.v1alpha1.applicationSet;
                 group: '',
                 kind: 'Secret',
                 name: 'tls-test-telesto-t-{{.telesto.id}}',
-                namespace: 'default',
               }],
             },
           }],
@@ -160,10 +202,11 @@ local applicationset = argo.argoproj.v1alpha1.applicationSet;
         kind: 'HTTPRoute',
         metadata: {
           name: 'http-route-telesto-{{.telesto.id}}',
+          namespace: 'telesto-{{.telesto.id}}',
         },
         spec: {
           parentRefs: [{
-            name: 'gateway-telesto-otelcol-{{.telesto.id}}',
+            name: 'gateway-telesto-{{.telesto.id}}',
             sectionName: 'https',
           }],
           hostnames: ['{{.telesto.id}}.t.telesto.test'],
@@ -183,6 +226,18 @@ local applicationset = argo.argoproj.v1alpha1.applicationSet;
       },
     ],
   },
+  telestosProject: project.new('telestos')
+                   + project.metadata.withNamespace($._config.argocdNamespace)
+                   + project.spec.withSourceRepos('*')
+                   + project.spec.withSourceNamespaces($._config._global.namespace)
+                   + project.spec.withDestinations(
+                     project.spec.destinations.withNamespace('*')
+                     + project.spec.destinations.withServer('*')
+                   )
+                   + project.spec.withClusterResourceWhitelist(
+                     project.spec.clusterResourceWhitelist.withKind('*')
+                     + project.spec.clusterResourceWhitelist.withGroup('*')
+                   ),
   applicationset: applicationset.new('telesto')
                   + applicationset.metadata.withNamespace($._config._global.namespace)
                   + applicationset.spec.withGoTemplate(true)
@@ -192,18 +247,21 @@ local applicationset = argo.argoproj.v1alpha1.applicationSet;
                     + applicationset.spec.generators.plugin.withRequeueAfterSeconds(10)
                   )
                   + applicationset.spec.template.metadata.withName('telesto-{{.telesto.id}}')
-                  + applicationset.spec.template.metadata.withNamespace($._config._global.namespace)
+                  + applicationset.spec.template.metadata.withNamespace('telesto-{{.telesto.id}}')
                   + applicationset.spec.template.spec.withProject('telestos')
                   + applicationset.spec.template.spec.syncPolicy.automated.withEnabled(true)
+                  + applicationset.spec.template.spec.syncPolicy.withSyncOptionsMixin('CreateNamespace=true')
+                  + applicationset.spec.template.spec.syncPolicy.managedNamespaceMetadata.withLabelsMixin({
+                    'telesto-deployed': 'true',
+                  })
                   + applicationset.spec.template.spec.syncPolicy.automated.withPrune(true)
                   + applicationset.spec.template.spec.syncPolicy.automated.withSelfHeal(true)
                   + applicationset.spec.template.spec.syncPolicy.automated.withAllowEmpty(true)
                   + applicationset.spec.template.spec.source.withRepoURL($._config.helmChartRepo)
                   + applicationset.spec.template.spec.source.withTargetRevision($._config.chartVersion)
-                  + applicationset.spec.template.spec.source.withChart($._config.clusterIssuerRefName)
+                  + applicationset.spec.template.spec.source.withChart($._config.chart)
                   + applicationset.spec.template.spec.source.helm.withReleaseName('telesto-{{.telesto.id}}')
                   + applicationset.spec.template.spec.source.helm.withValuesObject(self.otelcolHelmChartValues)
                   + applicationset.spec.template.spec.destination.withServer('https://kubernetes.default.svc')
-                  + applicationset.spec.template.spec.destination.withNamespace($._config._global.namespace),
-
+                  + applicationset.spec.template.spec.destination.withNamespace('telesto-{{.telesto.id}}'),
 }
