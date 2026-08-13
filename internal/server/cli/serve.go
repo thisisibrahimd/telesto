@@ -103,8 +103,14 @@ func NewServeCommand() *cobra.Command {
 			}
 
 			slog.Info("starting server")
-			if err := srv.ListenAndServe(); err != nil {
-				slog.Error("hello", "eerr", err)
+			if serveCfg.Server.Cert != "" && serveCfg.Server.Key != "" {
+				if err := srv.ListenAndServeTLS(serveCfg.Server.Cert, serveCfg.Server.Key); err != nil {
+					slog.Error("failed to serve tls server", slog.Any("error", err))
+				}
+			} else {
+				if err := srv.ListenAndServe(); err != nil {
+					slog.Error("failed to serve server", slog.Any("error", err))
+				}
 			}
 			return nil
 		},

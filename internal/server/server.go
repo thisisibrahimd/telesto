@@ -35,6 +35,10 @@ func (s *Server) ListenAndServe() error {
 	return http.ListenAndServe(s.config.Address, s.router)
 }
 
+func (s *Server) ListenAndServeTLS(certFile, keyFile string) error {
+	return http.ListenAndServeTLS(s.config.Address, certFile, keyFile, s.router)
+}
+
 func NewServer(cfg *Config) (*Server, error) {
 	srv := &Server{
 		config: cfg,

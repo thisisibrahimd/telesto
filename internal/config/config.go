@@ -12,6 +12,8 @@ type CSRF struct {
 }
 type Server struct {
 	Address string  `mapstructure:"address"`
+	Cert    string  `mapstructure:"cert"`
+	Key     string  `mapstructure:"key"`
 	Port    int     `mapstructure:"port"`
 	Cookies Cookies `mapstructure:"cookies"`
 	CSRF    CSRF    `mapstructure:"csrf"`
