@@ -1,2 +1,2 @@
-cloud-provider-kind: just cpk
-host-sync: just sync-ing-to-hosts-watch
+cloud-provider-kind: make cpk
+gw-sync: while true; do make sync-gw-to-hosts; sleep 5; done
