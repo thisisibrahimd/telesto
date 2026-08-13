@@ -1,82 +1,40 @@
 directory: charts
 repositories:
-- name: stable
-  url: https://charts.helm.sh/stable
-- name: grafana
-  url: https://grafana.github.io/helm-charts
-- name: open-telemetry
-  url: https://open-telemetry.github.io/opentelemetry-helm-charts
 - name: jetstack
   url: https://charts.jetstack.io
 - name: argo
   url: https://argoproj.github.io/argo-helm
-- name: infisical
-  url: https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/
-- name: external-dns
-  url: https://kubernetes-sigs.github.io/external-dns/
-- name: coredns
-  url: https://coredns.github.io/helm
-- name: rqlite
-  url: https://rqlite.github.io/helm-charts
-- name: ory
-  url: https://k8s.ory.com/helm/charts
 - name: cnpg
   url: https://cloudnative-pg.github.io/charts
-- name: openobserve
-  url: https://charts.openobserve.ai
-- name: rustfs
-  url: http://charts.rustfs.com
 - name: nginx
   url: oci://ghcr.io/nginx/charts
-- name: crossplane-stable
-  url: https://charts.crossplane.io/stable
 - name: dex
   url: https://charts.dexidp.io
-- name: linkerd-edge
-  url: https://helm.linkderd.io/edge
+- name: external-secrets
+  url: https://charts.external-secrets.io
+- name: stakater
+  url: https://stakater.github.io/stakater-charts
+- name: ory
+  url: https://k8s.ory.com/helm/charts
 requires:
-- chart: open-telemetry/opentelemetry-collector
-  version: 0.138.1
 - chart: jetstack/cert-manager
-  version: v1.19.1
-- chart: external-dns/external-dns
-  version: 1.20.0
+  version: v1.21.1
 - chart: argo/argo-cd
-  version: 9.5.13
-- chart: infisical/infisical-standalone
-  version: 1.7.2
-- chart: grafana/tempo
-  version: 1.24.0
-- chart: grafana/grafana
-  version: 10.1.5
-- chart: grafana/loki
-  version: 6.46.0
-- chart: coredns/coredns
-  version: 1.45.2
-- chart: rqlite/rqlite
-  version: 2.0.0
+  version: 10.3.3
 - chart: ory/kratos
-  version: 0.62.1
-- chart: ory/kratos-selfservice-ui-node
-  version: 0.61.1
+  version: 0.63.0
 - chart: cnpg/cloudnative-pg
   version: 0.29.0
 - chart: cnpg/cluster
-  version: 0.7.0
-- chart: openobserve/openobserve
-  version: 0.80.1
-- chart: openobserve/openobserve-standalone
-  version: 0.80.1
-- chart: openobserve/openobserve-collector
-  version: 0.4.3
-- chart: rustfs/rustfs
-  version: 0.0.93
+  version: 0.8.1
 - chart: nginx/nginx-gateway-fabric
-  version: 2.5.1
-- chart: crossplane-stable/crossplane
-  version: 2.3.2
-- chart: open-telemetry/opentelemetry-operator
-  version: 0.58.0
+  version: 2.6.7
 - chart: dex/dex
   version: 0.24.1
+- chart: external-secrets/external-secrets
+  version: 2.9.0
+- chart: jetstack/trust-manager
+  version: v0.24.0
+- chart: stakater/reloader
+  version: 2.2.16
 version: 1
