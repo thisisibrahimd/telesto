@@ -57,14 +57,17 @@ type WebServerInterface interface {
 	DeleteToken(w http.ResponseWriter, r *http.Request)
 }
 
-func Handler(r chi.Router, protected func(http.Handler) http.Handler, w WebServerInterface) {
+func Handler(r chi.Router, protected, telestoDeployerAuthM, externalSecretsM func(http.Handler) http.Handler, w WebServerInterface) {
 	r.Get("/", http.HandlerFunc(w.Index))
 	r.Get("/login", http.HandlerFunc(w.Login))
 	r.Get("/register", http.HandlerFunc(w.Register))
 
-	r.Post("/api/v1/getparams.execute", http.HandlerFunc(w.ExecuteParams))
+	// argo application set
+	r.With(telestoDeployerAuthM).Post("/api/v1/getparams.execute", http.HandlerFunc(w.ExecuteParams))
 
-	r.Get("/telestos/{id}/tokens", http.HandlerFunc(w.GetTelestoTokens))
+	// external secrets cluster secret store
+	r.With(externalSecretsM).Get("/telestos/{id}/tokens", http.HandlerFunc(w.GetTelestoTokens))
+
 	// protected routes
 	r.Group(func(r chi.Router) {
 		r.Use(protected)

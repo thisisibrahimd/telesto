@@ -372,7 +372,7 @@ local cnpg = import '../cloudnative-pg-crds/1.30.0/main.libsonnet';
             name: 'ArgoCD (test)',
             config: {
               clientID: $._config.githubClientID,
-              clientSecret: $._config.githubClientSecrett,
+              clientSecret: $._config.githubClientSecret,
               redirectURI: 'https://dex.telesto.test/callback',
               orgs: [
                 {

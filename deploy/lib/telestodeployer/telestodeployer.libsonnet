@@ -29,17 +29,16 @@ local externalSecret = es.nogroup.v1.externalSecret;
   },
 
   secret: k.core.v1.secret.new('telestodeployer-plugin', {
-            token: $._config.telestoDeployerToken,
+            'plugin.telestodeployer-plugin.token': std.base64($._config.telestoDeployerToken),
           }, 'Opaque')
           + k.core.v1.secret.metadata.withNamespace('argocd')
           + k.core.v1.secret.metadata.withLabelsMixin({
             'app.kubernetes.io/part-of': 'argocd',
           }),
-
   configmap: configmap.new(
                name='telestodeployer-plugin-config',
                data={
-                 token: '$telestodeployer-plugin:token',
+                 token: '$telestodeployer-plugin:plugin.telestodeployer-plugin.token',
                  baseUrl: 'http://telesto.app:443',
                  requestTimeout: '60',
                }
@@ -84,6 +83,7 @@ local externalSecret = es.nogroup.v1.externalSecret;
         name: 'telesto-tokens',
         secret: {
           secretName: 'telesto-tokens',
+          optional: true,
         },
       },
     ],
@@ -92,6 +92,7 @@ local externalSecret = es.nogroup.v1.externalSecret;
       {
         name: 'telesto-tokens',
         mountPath: '/etc/secrets/auth',
+        readonly: true,
       },
     ],
 
@@ -131,7 +132,7 @@ local externalSecret = es.nogroup.v1.externalSecret;
         },
       },
       service: {
-        extensions: ['health_check', 'bearertokenauth/telestotokenauth'],
+        extensions: ['health_check', '{{ if .telesto.tokensAvailable }}bearertokenauth/telestotokenauth{{ end }}'],
         pipelines: {
           logs: {
             exporters: ['debug'],

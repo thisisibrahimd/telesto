@@ -17,7 +17,6 @@ local helm = tanka.helm.new(std.thisFile);
         logFormat: 'json',
         reloadOnCreate: true,
         reloadOnDelete: true,
-        namespaceSelector: 'telesto-deployed=true',
       },
     },
   }),

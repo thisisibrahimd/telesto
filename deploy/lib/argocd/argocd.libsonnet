@@ -20,25 +20,18 @@ local project = argo.argoproj.v1alpha1.appProject;
   },
 
   // TODO: libsonnetify helm values
-  argocd: helm.template('customer-captian', '../../charts/argo-cd', {
+  argocd: helm.template('customer-captain', '../../charts/argo-cd', {
     namespace: $._config._global.namespace,
     values: {
       global: {
+        networkPolicy: {
+          create: false,
+        },
         domain: $._config.domain,
       },
       controller: {},
       applicationSet: {
         allowAnyNamespace: true,
-      },
-      rbac: {
-        'policy.csv': |||
-          p, role:org-admin, applications, *, */*, allow
-          p, role:org-admin, clusters, get, *, allow
-          p, role:org-admin, repositories, *, *, allow
-          p, role:org-admin, logs, get, *, allow
-          p, role:org-admin, exec, create, */*, allow
-          g, telestoai:engineers, role:org-admin
-        |||,
       },
       configs: {
         cm: {
@@ -97,7 +90,7 @@ local project = argo.argoproj.v1alpha1.appProject;
         kind: 'ClusterIssuer',
       },
       svc: {
-        name: 'customer-captian-argocd-server',
+        name: 'customer-captain-argocd-server',
         port: 443,
       },
     },

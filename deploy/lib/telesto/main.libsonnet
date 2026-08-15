@@ -24,7 +24,7 @@ local cPort = k.core.v1.containerPort;
 local service = k.core.v1.service;
 
 {
-  _config+:: {
+  _config:: {
     _global: {
       namespace: 'app',
     },
@@ -39,7 +39,7 @@ local service = k.core.v1.service;
     telestoDeployerToken: '',
   },
 
-  _images+:: {
+  _images:: {
     telesto: 'ghcr.io/thisisibrahimd/telesto:0.0.3-next',
   },
 
@@ -71,8 +71,8 @@ local service = k.core.v1.service;
                 ],
               )
               + deployment.metadata.withNamespace($._config._global.namespace)
-              + deployment.metadata.withAnnotationsMixin({
-                'checksum/config': std.sha256(std.toString($.config)),
+              + deployment.metadata.withAnnotations({
+                'reloader.stakater.com/auto': 'true',
               })
               + deployment.spec.template.spec.withVolumesMixin({
                 name: 'db-client-cert',
@@ -88,43 +88,39 @@ local service = k.core.v1.service;
               })
               + deployment.spec.template.spec.withVolumesMixin({
                 name: 'config',
-                configMap: {
-                  name: 'config-telesto',
-                  items: [{
-                    key: 'telesto.json',
-                    path: 'telesto.json',
-                  }],
+                secret: {
+                  secretName: 'config-telesto',
                 },
               }),
   service: k.util.serviceFor(self.deployment)
            + service.metadata.withNamespace($._config._global.namespace),
-  config: k.core.v1.configMap.new('config-telesto', {
-            'telesto.json': std.toString({
-              server: {
-                address: ':' + $._config.telesto.telesto.port,
-                port: $._config.telesto.telesto.port,
-                // cert: "/etc/certs/server/tls.crt",
-                // key: "/etc/certs/server/tls.key"
-              },
+  secret: k.core.v1.secret.new('config-telesto', {
+            'telesto.json': std.base64(std.toString({
               auth: {
                 kratos: {
                   internalEndpoint: 'http://auth-kratos-public.auth',
                   publicEndpoint: 'https://auth.telesto.test',
                 },
               },
-              telestoDeployer: {
-                token: $._config.telestoDeployerToken,
-              },
-              externalSecrets: {
-                token: $._config.externalSecretsToken,
-              },
               storage: {
                 migrate: true,
                 dsn: 'postgres://telesto-app@telesto-db-cluster-rw.app:5432/telesto?sslmode=verify-full&sslrootcert=/etc/certs/db/ca.crt&sslcert=/etc/certs/db/tls.crt&sslkey=/etc/certs/db/tls.key',
               },
-            }),
-          })
-          + k.core.v1.configMap.metadata.withNamespace($._config._global.namespace),
+              server: {
+                address: ':' + $._config.telesto.telesto.port,
+                port: $._config.telesto.telesto.port,
+                // cert: "/etc/certs/server/tls.crt",
+                // key: "/etc/certs/server/tls.key"
+                telestoDeployer: {
+                  token: $._config.telestoDeployerToken,
+                },
+                externalSecrets: {
+                  token: $._config.externalSecretsToken,
+                },
+              },
+            })),
+          }, 'Opaque')
+          + k.core.v1.secret.metadata.withNamespace($._config._global.namespace),
   certServer: cm.nogroup.v1.certificate.new('telesto-server')
               + cm.nogroup.v1.certificate.metadata.withNamespace($._config._global.namespace)
               + cm.nogroup.v1.certificate.spec.withCommonName('app.telesto.net')
@@ -158,8 +154,7 @@ local service = k.core.v1.service;
 
   // secrets
   telestoClusterSecretStoreCredentials: k.core.v1.secret.new('telesto-cluster-secret-store-creds', {
-                                          //# support real token
-                                          token: $._config.externalSecretsToken,
+                                          token: std.base64($._config.externalSecretsToken),
                                         }, 'Opaque')
                                         + k.core.v1.secret.metadata.withNamespace($._config._global.namespace)
                                         + k.core.v1.secret.metadata.withLabels({

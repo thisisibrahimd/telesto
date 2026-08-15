@@ -11,12 +11,14 @@ type CSRF struct {
 	Key string `mapstructure:"key"`
 }
 type Server struct {
-	Address string  `mapstructure:"address"`
-	Cert    string  `mapstructure:"cert"`
-	Key     string  `mapstructure:"key"`
-	Port    int     `mapstructure:"port"`
-	Cookies Cookies `mapstructure:"cookies"`
-	CSRF    CSRF    `mapstructure:"csrf"`
+	Address         string          `mapstructure:"address"`
+	Cert            string          `mapstructure:"cert"`
+	Key             string          `mapstructure:"key"`
+	Port            int             `mapstructure:"port"`
+	Cookies         Cookies         `mapstructure:"cookies"`
+	CSRF            CSRF            `mapstructure:"csrf"`
+	TelestoDeployer TelestoDeployer `mapstructure:"telestoDeployer"`
+	ExternalSecrets ExternalSecrets `mapstructure:"externalSecrets"`
 }
 
 type Storage struct {
@@ -41,9 +43,7 @@ type ExternalSecrets struct {
 }
 
 type ServeConfig struct {
-	Storage         Storage         `mapstructure:"storage"`
-	Server          Server          `mapstructure:"server"`
-	Auth            Auth            `mapstructure:"auth"`
-	TelestoDeployer TelestoDeployer `mapstructure:"telestoDeployer"`
-	ExternalSecrets ExternalSecrets `mapstructure:"externalSecrets"`
+	Storage Storage `mapstructure:"storage"`
+	Server  Server  `mapstructure:"server"`
+	Auth    Auth    `mapstructure:"auth"`
 }

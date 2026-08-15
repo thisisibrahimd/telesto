@@ -86,7 +86,13 @@ func NewServeCommand() *cobra.Command {
 			oryClient := ory.NewAPIClient(oryCfg)
 
 			// session keys
-			// srvKeyStore := server.BadKeyStore()
+			// srvKeyStore := &server.KeyStore{
+			// 	CookieStoreKey:  []byte{},
+			// 	CookieEncKey:    []byte{},
+			// 	SessionStoreKey: []byte{},
+			// 	SessionEncKey:   []byte{},
+			// 	CsrfKey:         []byte{},
+			// }
 
 			// server
 			srvCfg := &server.Config{
@@ -96,6 +102,8 @@ func NewServeCommand() *cobra.Command {
 				Storage:              sto,
 				OryKratosClient:      oryClient,
 				KratosPublicEndpoint: serveCfg.Auth.Kratos.PublicEndpoint,
+				TelestoDeployer:      serveCfg.Server.TelestoDeployer,
+				ExternalSecrets:      serveCfg.Server.ExternalSecrets,
 			}
 			srv, err := server.NewServer(srvCfg)
 			if err != nil {

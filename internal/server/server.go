@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/gorilla/sessions"
 	ory "github.com/ory/kratos-client-go/v26"
+	"github.com/thisisibrahimd/telesto/internal/config"
 	"github.com/thisisibrahimd/telesto/internal/server/middlewares"
 	"github.com/thisisibrahimd/telesto/internal/server/web"
 	"github.com/thisisibrahimd/telesto/internal/storage"
@@ -23,6 +24,8 @@ type Config struct {
 	Storage              *storage.Storage
 	OryKratosClient      *ory.APIClient
 	KratosPublicEndpoint string
+	TelestoDeployer      config.TelestoDeployer `mapstructure:"telestoDeployer"`
+	ExternalSecrets      config.ExternalSecrets `mapstructure:"externalSecrets"`
 }
 
 type Server struct {
@@ -49,6 +52,7 @@ func NewServer(cfg *Config) (*Server, error) {
 	srv.router = router
 
 	// register middlewares
+	router.Use(middleware.CleanPath)
 	router.Use(middleware.RequestID)
 	router.Use(srv.config.Logger.Middleware)
 	router.Use(cors.Handler(cors.Options{
@@ -61,31 +65,20 @@ func NewServer(cfg *Config) (*Server, error) {
 		MaxAge:           300, // Maximum value not ignored by any of major browsers
 	}))
 	router.Use(middleware.Recoverer)
+	router.Use(middleware.StripSlashes)
 	router.Use(middlewares.LoadSession(srv.config.OryKratosClient))
+
 	protect := middlewares.Protected(srv.config.OryKratosClient, srv.config.KratosPublicEndpoint)
+	telestoDeployerM := middlewares.BearerToken(cfg.TelestoDeployer.Token)
+	externalSecretsM := middlewares.BearerToken(cfg.ExternalSecrets.Token)
 
 	// static files
 	subFs, _ := fs.Sub(static.Dir, ".")
 	FileServer(router, "/static", http.FS(subFs))
 
-	// api server impl
-	// strictServerConfig := api.ServerConfig{
-	// 	Storage: srv.storage,
-	// 	Logger:  srv.logger.Logger,
-	// }
-	// strictServerApi, err := api.NewStrictServer(&strictServerConfig)
-	// if err != nil {
-	// 	return nil, xerrors.New("failed to create api handlers")
-	// }
-	// serverApi := api.NewStrictHandler(strictServerApi, nil)
-	// serverApiHandler := api.HandlerFromMux(serverApi, router)
-
-	// // api handler
-	// router.Handle("/api", http.StripPrefix("/api/", serverApiHandler))
-
 	// web server
 	webServer := web.NewWebServer(&web.WebServerConfig{OryAPIClient: srv.config.OryKratosClient, Storage: srv.config.Storage, AuthEndpoint: srv.config.KratosPublicEndpoint})
-	web.Handler(router, protect, webServer)
+	web.Handler(router, protect, telestoDeployerM, externalSecretsM, webServer)
 
 	return srv, nil
 }
