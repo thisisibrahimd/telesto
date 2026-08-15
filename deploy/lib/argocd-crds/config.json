@@ -1,0 +1,14 @@
+{
+  "libName": "argo-cd",
+  "description": "Generated Jsonnet library for Argo CD",
+  "specGenerator": {
+    "type": "github",
+    "repo": "https://github.com/argoproj/argo-cd",
+    "crdPath": "manifests/crds",
+    "prefix": "^io\\.argoproj\\..*",
+    "versions": [
+      "3.4.1"
+    ]
+  },
+  "specs": []
+}

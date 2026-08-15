@@ -1,3 +1,5 @@
 .terraform/
 vendor
 charts
+
+*_templ.go

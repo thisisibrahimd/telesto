@@ -8,8 +8,6 @@ import (
 	ory "github.com/ory/kratos-client-go/v26"
 )
 
-type contextKey string
-
 var ErrNoSessionFound = xerrors.New("no session found in cookie")
 
 const (

@@ -1,0 +1,14 @@
+{
+  "libName": "external-secrets",
+  "description": "Generated Jsonnet library for External Secrets",
+  "specGenerator": {
+    "type": "github",
+    "repo": "https://github.com/external-secrets/external-secrets",
+    "crdPath": "config/crds/bases",
+    "prefix": "^io\\.external-secrets\\..*",
+    "versions": [
+      "2.9.0"
+    ]
+  },
+  "specs": []
+}

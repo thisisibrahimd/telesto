@@ -1,71 +1,87 @@
-// libraries
-local tanka = import 'github.com/grafana/jsonnet-libs/tanka-util/main.libsonnet';
-local helm = tanka.helm.new(std.thisFile);
-local k = import 'ksonnet-util/kausal.libsonnet';
-
 // util
-local netutil = import '../../lib/util/net.libsonnet';
 local nsutil = import '../../lib/util/ns.libsonnet';
 
 // namespace management
 local _namespaces = [
   'argocd',
-  'telesto',
+  'app',
   'storage',
   'monitoring',
   'auth',
   'nginx-gateway',
   'cert-manager',
+  'trust-manager',
   'cnpg-system',
+  'telestos',
+  'external-secrets',
+  'reloader',
 ];
-// local namespaces = { ['ns_' + std.strReplace(n, '-', '_')]: n for n in _namespaces };
-local namespaces = { ['ns_' + std.strReplace(n, '-', '_')]: { name: n, namespace: nsutil.ns(n) } for n in _namespaces };
 
 // secrets
-local secret_json = std.extVar('secret_json');
-local secret = std.parseJson(secret_json);
+local secretsJson = std.extVar('secretsJson');
+local secrets = std.parseJson(secretsJson);
 
 {
   // create namespaces
   namespaces: { [std.format('ns_%s', n)]: nsutil.ns(n) for n in _namespaces },
 
-
   // components
-
   // cert management
-  ca: (import '../../lib/networking/ca.libsonnet') + {
-    _config+:: {
-      certificateBase64Encoded: secret.certs.crtB64,
-      keyBase64Encoded: secret.certs.keyB64,
-    },
-  },
+  ca: (import '../../lib/networking/ca.libsonnet'),
+
+  // trust-manager
+  tm: (import '../../lib/networking/tm.libsonnet'),
 
   // gateway management
-  gateway: (import '../../lib/networking/gateway.libsonnet') + {
-    _config+:: {
-      clusterIssuerRefName: $.ca._config.clusterIssuerName,
-    },
-  },
+  gateway: (import '../../lib/networking/gateway.libsonnet'),
+
+  // reloader
+  reloader: (import '../../lib/reloader/reloader.libsonnet'),
 
   // database management
-  cnpg_system: (import '../../lib/storage/cnpg_system.libsonnet') + {},
+  cnpgSystem: (import '../../lib/storage/cnpg_system.libsonnet'),
+
+  // external-secrets
+  externalSecrets: (import '../../lib/external-secrets/externalsecrets.libsonnet'),
 
   // argocd installation
-  argocd: (import '../../lib/argocd/argocd.libsonnet') + {},
+  argocd: (import '../../lib/argocd/argocd.libsonnet') + {
+    _config+:: {
+      oidcClientSecret: secrets.dex.clients.argocd.secret
+      
+    }
+  },
 
   // auth solution
-  auth: (import '../../lib/auth/auth.libsonnet') + {},
-
-  // TELESTO APP
-  telesto: (import '../../lib/telesto/main.libsonnet') + {
+  auth: (import '../../lib/auth/auth.libsonnet') + {
     _config+:: {
-      clusterIssuerRefName: $.ca._config.clusterIssuerName,
-    },
-    _images+:: {
-      telesto: 'ghcr.io/thisisibrahimd/telesto:0.0.3-next-amd64',
+      argocdClientSecret: secrets.dex.clients.argocd.secret,
+      githubClientID: secrets.dex.connectors.github.clientID,
+      githubClientSecret: secrets.dex.connectors.github.clientSecret,
     },
   },
 
-  // OTELCOL DEPLOYER
-  // otelcoldeployer: ocdeployer.otelcoldeployer.new(),
+  // telesto app
+  telesto: (import '../../lib/telesto/main.libsonnet') + {
+    _config+:: {
+      _global: {
+        namespace: 'app',
+      },
+      clusterIssuerRefName: $.ca._config.clusterIssuerName,
+      telestoDeployerToken: secrets.server.telestoDeployerToken,
+      externalSecretsToken: secrets.server.externalSecretsToken,
+    },
+    _images+:: {
+      telesto: 'ghcr.io/thisisibrahimd/telesto:0.0.5-next-amd64',
+    },
+  },
+
+  // telesto deployer
+  telestodeployer: (import '../../lib/telestodeployer/telestodeployer.libsonnet') + {
+    _config+:: {
+      clusterIssuerRefName: $.ca._config.clusterIssuerName,
+
+      telestoDeployerToken: secrets.server.telestoDeployerToken
+    },
+  },
 }

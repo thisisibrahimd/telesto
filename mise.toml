@@ -1,4 +1,6 @@
 [tools]
 go = "1.25.8"
 golangci-lint = "2.6.1"
-"github:thisisibrahimd/k8s" = { version = "0.0.1-alpha.11", asset_pattern = "k8s-gen_linux_x86_64.tar.gz" }
+"github:thisisibrahimd/k8s" = { version = "0.0.3", asset_pattern = "k8s-gen_{{ os() | replace(from='macos', to='darwin') }}_{{ arch() | replace(from='x64', to='x86_64') }}.tar.gz" }
+"github:kubernetes-sigs/cloud-provider-kind" = { version = "0.11.1", asset_pattern = "cloud-provider-kind_*_{{ os() | replace(from='macos', to='darwin') }}_{{ arch() | replace(from='x64', to='x86_64') }}.tar.gz" }
+"github:guumaster/hostctl" = { version = "1.1.4", asset_pattern = "hostctl_*_{{ os() | replace(from='macos', to='macOS') }}_{{ arch() | replace(from='x64', to='64-bit') }}.tar.gz" }

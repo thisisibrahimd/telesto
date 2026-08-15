@@ -1,0 +1,22 @@
+package layouts
+
+import "github.com/thisisibrahimd/telesto/templates/components"
+
+templ Console(title string) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<title>{ title }</title>
+			@components.Head()
+		</head>
+		<body class="min-h-screen bg-gray-50 text-gray-900">
+			@components.Nav()
+			<div class="flex min-h-[calc(100vh-4rem)]">
+				@components.Sidebar()
+				<main class="flex-1 p-8">
+					{ children... }
+				</main>
+			</div>
+		</body>
+	</html>
+}

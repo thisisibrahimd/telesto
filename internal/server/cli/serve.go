@@ -86,7 +86,13 @@ func NewServeCommand() *cobra.Command {
 			oryClient := ory.NewAPIClient(oryCfg)
 
 			// session keys
-			// srvKeyStore := server.BadKeyStore()
+			// srvKeyStore := &server.KeyStore{
+			// 	CookieStoreKey:  []byte{},
+			// 	CookieEncKey:    []byte{},
+			// 	SessionStoreKey: []byte{},
+			// 	SessionEncKey:   []byte{},
+			// 	CsrfKey:         []byte{},
+			// }
 
 			// server
 			srvCfg := &server.Config{
@@ -96,6 +102,8 @@ func NewServeCommand() *cobra.Command {
 				Storage:              sto,
 				OryKratosClient:      oryClient,
 				KratosPublicEndpoint: serveCfg.Auth.Kratos.PublicEndpoint,
+				TelestoDeployer:      serveCfg.Server.TelestoDeployer,
+				ExternalSecrets:      serveCfg.Server.ExternalSecrets,
 			}
 			srv, err := server.NewServer(srvCfg)
 			if err != nil {
@@ -103,24 +111,18 @@ func NewServeCommand() *cobra.Command {
 			}
 
 			slog.Info("starting server")
-			if err := srv.ListenAndServe(); err != nil {
-				slog.Error("hello", "eerr", err)
+			if serveCfg.Server.Cert != "" && serveCfg.Server.Key != "" {
+				if err := srv.ListenAndServeTLS(serveCfg.Server.Cert, serveCfg.Server.Key); err != nil {
+					slog.Error("failed to serve tls server", slog.Any("error", err))
+				}
+			} else {
+				if err := srv.ListenAndServe(); err != nil {
+					slog.Error("failed to serve server", slog.Any("error", err))
+				}
 			}
 			return nil
 		},
 	}
-
-	// cmd.Flags().StringVar(&opts.Address, "address", "localhost:9000", "server address")
-	// cmd.Flags().StringVar(&opts.LogLevel, "log-level", "info", "log level")
-	// cmd.Flags().StringVar(&opts.DSN, "dsn", "http://localhost:4001", "dsn")
-	// cmd.Flags().StringVar(&opts.KratosInternalPublicEndpoint, "kratos-internal-public-endpoint", "http://localhost:4433", "kratos internal public endpoint")
-	// cmd.Flags().StringVar(&opts.KratosPublicEndpoint, "kratos-public-endpoint", "http://localhost:4433", "kratos public endpoint")
-	// cmd.Flags().BoolVar(&opts.Migrate, "migrate", false, "migrate db")
-	// cmd.Flags().StringVar(&opts.CookieStoreKey, "cookie-store-key", "", "cookie store key")
-	// cmd.Flags().StringVar(&opts.CookieEncKey, "cookie-env-key", "", "cookie env key")
-	// cmd.Flags().StringVar(&opts.SessionStoreKey, "session-store-key", "", "session store key")
-	// cmd.Flags().StringVar(&opts.SessionEncKey, "session-enc-key", "", "session env key")
-	// cmd.Flags().StringVar(&opts.CsrfKey, "csrf-key", "", "csrf key")
 
 	cmd.Flags().StringVar(&serveCfgFile, "config", "./telesto.json", "config file")
 

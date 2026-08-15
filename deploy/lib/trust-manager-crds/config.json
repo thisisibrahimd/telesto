@@ -1,0 +1,14 @@
+{
+  "libName": "trust-manager",
+  "description": "Generated Jsonnet library for Trust Manager",
+  "specGenerator": {
+    "type": "github",
+    "repo": "https://github.com/cert-manager/trust-manager",
+    "crdPath": "deploy/crds",
+    "prefix": "^io\\.(trust-manager|cert-manager)\\..*",
+    "versions": [
+      "0.24.0"
+    ]
+  },
+  "specs": []
+}

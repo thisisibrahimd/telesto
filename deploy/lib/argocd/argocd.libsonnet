@@ -1,35 +1,48 @@
 local tanka = import 'github.com/grafana/jsonnet-libs/tanka-util/main.libsonnet';
 local helm = tanka.helm.new(std.thisFile);
-local kustomize = tanka.kustomize.new(std.thisFile);
-local k = import 'ksonnet-util/kausal.libsonnet';
 
-local netutil = import '../../lib/util/net.libsonnet';
-
-
+local argo = import '../argocd-crds/3.4.1/main.libsonnet';
+local project = argo.argoproj.v1alpha1.appProject;
 {
   _config:: {
     _global: {
       namespace: 'argocd',
     },
     domain: 'argocd.telesto.test',
+
+    clusterIssuerRefName: 'cluster-issuer-central',
+    gatewayClassName: 'nginx',
+
+    oidcIssuer: 'https://dex.telesto.test',
+    oidcClientID: 'argocd',
+    oidcClientSecret: '',
+
   },
 
-  argocd: helm.template('customer-captian', '../../charts/argo-cd', {
+  // TODO: libsonnetify helm values
+  argocd: helm.template('customer-captain', '../../charts/argo-cd', {
     namespace: $._config._global.namespace,
     values: {
       global: {
+        networkPolicy: {
+          create: false,
+        },
         domain: $._config.domain,
+      },
+      controller: {},
+      applicationSet: {
+        allowAnyNamespace: true,
       },
       configs: {
         cm: {
           url: 'https://' + $._config.domain,
-          'admin.enabled': 'false',
+          // 'admin.enabled': 'false',
           'oidc.tls.insecure.skip.verify': true,
           'oidc.config': std.manifestYamlDoc({
             name: 'GitHub',
-            issuer: 'https://dex.telesto.test',
-            clientID: 'argocd',
-            clientSecret: 'my-secret-here',
+            issuer: $._config.oidcIssuer,
+            clientID: $._config.oidcClientID,
+            clientSecret: $._config.oidcClientSecret,
             requestedScopes: [
               'openid',
               'profile',
@@ -39,12 +52,10 @@ local netutil = import '../../lib/util/net.libsonnet';
           }, indent_array_in_object=true, quote_keys=false),
         },
         params: {
+          'application.namespaces': 'telestos,telesto-*',
+          'applicationsetcontroller.namespaces': 'telestos,telesto-*',
+          'applicationsetcontroller.enable.scm.providers': false,
           'server.insecure': true,
-        },
-        secret: {
-          extra: {
-            'otelcoldeployer.otelcoldeployer_plugin.token': 'GVsbG8=',
-          },
         },
       },
       dex: {
@@ -57,6 +68,15 @@ local netutil = import '../../lib/util/net.libsonnet';
       },
     },
   }),
+  denyDefaultProject: project.new('default')
+                      + project.metadata.withNamespace($._config._global.namespace)
+                      + project.spec.withSourceRepos([])
+                      + project.spec.withDestinations([])
+                      + project.spec.withClusterResourceWhitelist([])
+                      + project.spec.withNamespaceResourceBlacklist(
+                        project.spec.namespaceResourceBlacklist.withKind('*')
+                        + project.spec.namespaceResourceBlacklist.withGroup('*')
+                      ),
   gateway: (import '../util/simple_gateway.libsonnet') + {
     _config+:: {
       _global: {
@@ -64,14 +84,14 @@ local netutil = import '../../lib/util/net.libsonnet';
       },
       name: 'argocd',
       hostname: $._config.domain,
-      gatewayClassName: 'nginx',
+      gatewayClassName: $._config.gatewayClassName,
       issuerRef: {
-        name: 'cluster-issuer-central',
+        name: $._config.clusterIssuerRefName,
         kind: 'ClusterIssuer',
       },
       svc: {
-        name: 'customer-captian-argocd-server',
-        port: 80,
+        name: 'customer-captain-argocd-server',
+        port: 443,
       },
     },
   },

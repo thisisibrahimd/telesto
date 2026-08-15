@@ -21,7 +21,7 @@ func (l *Logger) NewSubLogger(name string) *Logger {
 
 func NewLogger() *Logger {
 	options := &slog.HandlerOptions{
-		AddSource:   true,
+		AddSource:   false,
 		Level:       slog.LevelDebug,
 		ReplaceAttr: replaceAttr,
 	}

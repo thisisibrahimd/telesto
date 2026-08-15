@@ -2,14 +2,13 @@ local tanka = import 'github.com/grafana/jsonnet-libs/tanka-util/main.libsonnet'
 local helm = tanka.helm.new(std.thisFile);
 
 local identitySchema = importstr './identity.schema.json';
-local k = import 'ksonnet-util/kausal.libsonnet';
+local k = import 'github.com/grafana/jsonnet-libs/ksonnet-util/kausal.libsonnet';
 
 local helmutil = import '../../lib/util/helm.libsonnet';
-local netutil = import '../../lib/util/net.libsonnet';
 local dnsutil = import '../../lib/util/dns.libsonnet';
 
 local cm = import 'github.com/jsonnet-libs/cert-manager-libsonnet/1.19/main.libsonnet';
-local cmv1 = cm.nogroup.v1;
+local cnpg = import '../cloudnative-pg-crds/1.30.0/main.libsonnet';
 
 {
   _config:: {
@@ -18,21 +17,23 @@ local cmv1 = cm.nogroup.v1;
     },
     domain: 'auth.telesto.test',
     clusterIssuerRefName: 'cluster-issuer-central',
+
+    argocdClientSecret: '',
+
+    githubClientID: '',
+    githubClientSecret: '',
   },
+
   // database for auth components
-  secret_cert_db_auth_server: k.core.v1.secret.new('cert-db-auth-server', {}, 'kubernetes.io/tls')
+  secretCertDBAuthServer: k.core.v1.secret.new('cert-db-auth-server', {}, 'kubernetes.io/tls')
                               + k.core.v1.secret.metadata.withNamespace($._config._global.namespace)
-                              + k.core.v1.secret.metadata.withLabelsMixin({
-                                'cnpg.io/reload': '',
-                              }),
-  cert_db_auth_server: cm.nogroup.v1.certificate.new('db-auth-server')
+                              + k.core.v1.secret.metadata.withLabelsMixin({ 'cnpg.io/reload': '' }),
+  certDBAuthServer: cm.nogroup.v1.certificate.new('db-auth-server')
                        + cm.nogroup.v1.certificate.metadata.withNamespace($._config._global.namespace)
                        + cm.nogroup.v1.certificate.spec.withIsCA(true)
                        + cm.nogroup.v1.certificate.spec.withCommonName('db-auth-server')
                        + cm.nogroup.v1.certificate.spec.withSecretName('cert-db-auth-server')
-                       + cm.nogroup.v1.certificate.spec.withUsages([
-                         'server auth',
-                       ])
+                       + cm.nogroup.v1.certificate.spec.withUsages(['server auth'])
                        + cm.nogroup.v1.certificate.spec.withDnsNames(
                          dnsutil.dnsnames.cnpg.new('auth-db-cluster', 'auth')
                        )
@@ -41,28 +42,25 @@ local cmv1 = cm.nogroup.v1;
                        + cm.nogroup.v1.certificate.spec.issuerRef.withName($._config.clusterIssuerRefName)
                        + cm.nogroup.v1.certificate.spec.issuerRef.withKind('ClusterIssuer')
                        + cm.nogroup.v1.certificate.spec.issuerRef.withGroup('cert-manager.io'),
-  issuer_db_auth_server: cm.nogroup.v1.issuer.new('issuer-db-auth-server')
+  issuerDBAuthServer: cm.nogroup.v1.issuer.new('issuer-db-auth-server')
                          + cm.nogroup.v1.issuer.metadata.withNamespace($._config._global.namespace)
                          + cm.nogroup.v1.issuer.spec.ca.withSecretName('cert-db-auth-server'),
-  secret_cert_db_auth_client: k.core.v1.secret.new('cert-db-auth-client', {}, 'kubernetes.io/tls')
+  secretCertDBAuthClient: k.core.v1.secret.new('cert-db-auth-client', {}, 'kubernetes.io/tls')
                               + k.core.v1.secret.metadata.withNamespace($._config._global.namespace)
-                              + k.core.v1.secret.metadata.withLabelsMixin({
-                                'cnpg.io/reload': '',
-                              }),
-  cert_db_auth_client: cm.nogroup.v1.certificate.new('db-auth-client')
+                              + k.core.v1.secret.metadata.withLabelsMixin({ 'cnpg.io/reload': '' }),
+  certDBAuthClient: cm.nogroup.v1.certificate.new('db-auth-client')
                        + cm.nogroup.v1.certificate.metadata.withNamespace($._config._global.namespace)
                        + cm.nogroup.v1.certificate.spec.withIsCA(true)
                        + cm.nogroup.v1.certificate.spec.withCommonName('streaming-replica')
                        + cm.nogroup.v1.certificate.spec.withSecretName('cert-db-auth-client')
-                       + cm.nogroup.v1.certificate.spec.withUsages([
-                         'client auth',
-                       ])
+                       + cm.nogroup.v1.certificate.spec.withUsages(['client auth'])
                        + cm.nogroup.v1.certificate.spec.issuerRef.withName($._config.clusterIssuerRefName)
                        + cm.nogroup.v1.certificate.spec.issuerRef.withKind('ClusterIssuer')
                        + cm.nogroup.v1.certificate.spec.issuerRef.withGroup('cert-manager.io'),
-  issuer_db_auth_client: cm.nogroup.v1.issuer.new('issuer-db-auth-client')
+  issuerDBAuthClient: cm.nogroup.v1.issuer.new('issuer-db-auth-client')
                          + cm.nogroup.v1.issuer.metadata.withNamespace($._config._global.namespace)
                          + cm.nogroup.v1.issuer.spec.ca.withSecretName('cert-db-auth-client'),
+  // TODO: libsonnetify helm values
   auth_db_cluster: helm.template('auth-db', '../../charts/cluster', {
     namespace: $._config._global.namespace,
     values: {
@@ -94,55 +92,34 @@ local cmv1 = cm.nogroup.v1;
       },
     },
   }),
+  certDBAuthKratosClient: cm.nogroup.v1.certificate.new('db-auth-kratos-client')
+                          + cm.nogroup.v1.certificate.metadata.withNamespace($._config._global.namespace)
+                          + cm.nogroup.v1.certificate.spec.withCommonName('kratos')
+                          + cm.nogroup.v1.certificate.spec.withSecretName('cert-db-auth-kratos-client')
+                          + cm.nogroup.v1.certificate.spec.withUsages([
+                            'client auth',
+                          ])
+                          + cm.nogroup.v1.certificate.spec.privateKey.withAlgorithm('ECDSA')
+                          + cm.nogroup.v1.certificate.spec.privateKey.withSize(256)
+                          + cm.nogroup.v1.certificate.spec.issuerRef.withName($._config.clusterIssuerRefName)
+                          + cm.nogroup.v1.certificate.spec.issuerRef.withKind('ClusterIssuer')
+                          + cm.nogroup.v1.certificate.spec.issuerRef.withGroup('cert-manager.io'),
 
-
-  cert_db_auth_kratos_client: cm.nogroup.v1.certificate.new('db-auth-kratos-client')
-                              + cm.nogroup.v1.certificate.metadata.withNamespace($._config._global.namespace)
-                              + cm.nogroup.v1.certificate.spec.withCommonName('kratos')
-                              + cm.nogroup.v1.certificate.spec.withSecretName('cert-db-auth-kratos-client')
-                              + cm.nogroup.v1.certificate.spec.withUsages([
-                                'client auth',
-                              ])
-                              + cm.nogroup.v1.certificate.spec.privateKey.withAlgorithm('ECDSA')
-                              + cm.nogroup.v1.certificate.spec.privateKey.withSize(256)
-                              + cm.nogroup.v1.certificate.spec.issuerRef.withName($._config.clusterIssuerRefName)
-                              + cm.nogroup.v1.certificate.spec.issuerRef.withKind('ClusterIssuer')
-                              + cm.nogroup.v1.certificate.spec.issuerRef.withGroup('cert-manager.io'),
-  kratos_db_role: {
-    apiVersion: 'postgresql.cnpg.io/v1',
-    kind: 'DatabaseRole',
-    metadata: {
-      name: 'role-kratos',
-      namespace: $._config._global.namespace,
-    },
-    spec: {
-      cluster: {
-        name: 'auth-db-cluster',
-      },
-      name: 'kratos',
-      comment: 'ORY Kratos',
-      login: true,
-      superuser: false,
-      createdb: false,
-      databaseRoleReclaimPolicy: 'delete',
-    },
-  },
-  kratos_db: {
-    apiVersion: 'postgresql.cnpg.io/v1',
-    kind: 'Database',
-    metadata: {
-      name: 'kratos',
-      namespace: $._config._global.namespace,
-    },
-    spec: {
-      databaseReclaimPolicy: 'delete',
-      cluster: {
-        name: 'auth-db-cluster',
-      },
-      name: 'kratos',
-      owner: 'kratos',
-    },
-  },
+  kratosDBRole: cnpg.postgresql.v1.databaseRole.new('role-kratos')
+                + cnpg.postgresql.v1.databaseRole.metadata.withNamespace($._config._global.namespace)
+                + cnpg.postgresql.v1.databaseRole.spec.cluster.withName('auth-db-cluster')
+                + cnpg.postgresql.v1.databaseRole.spec.withName('kratos')
+                + cnpg.postgresql.v1.databaseRole.spec.withComment('ORY Kratos')
+                + cnpg.postgresql.v1.databaseRole.spec.withLogin(true)
+                + cnpg.postgresql.v1.databaseRole.spec.withSuperuser(false)
+                + cnpg.postgresql.v1.databaseRole.spec.withCreatedb(false)
+                + cnpg.postgresql.v1.databaseRole.spec.withDatabaseRoleReclaimPolicy('delete'),
+  kratosDB: cnpg.postgresql.v1.database.new('kratos')
+            + cnpg.postgresql.v1.database.metadata.withNamespace($._config._global.namespace)
+            + cnpg.postgresql.v1.database.spec.cluster.withName('auth-db-cluster')
+            + cnpg.postgresql.v1.database.spec.withName('kratos')
+            + cnpg.postgresql.v1.database.spec.withOwner('kratos')
+            + cnpg.postgresql.v1.database.spec.withDatabaseReclaimPolicy('delete'),
   // kratos svc
   kratos: helmutil.stripHelmHooks(helm.template('auth', '../../charts/kratos', {
     namespace: $._config._global.namespace,
@@ -367,7 +344,7 @@ local cmv1 = cm.nogroup.v1;
         name: 'db-client-cert',
         secret: {
           secretName: 'cert-db-auth-dex-client',
-          defaultMode: std.parseOctal("640"),
+          defaultMode: std.parseOctal('640'),
         },
       }],
       volumeMounts: [{
@@ -385,7 +362,7 @@ local cmv1 = cm.nogroup.v1;
               'https://argocd.telesto.test/auth/callback',
             ],
             name: 'ArgoCD',
-            secret: 'my-secret-here',
+            secret: $._config.argocdClientSecret,
           },
         ],
         connectors: [
@@ -394,8 +371,8 @@ local cmv1 = cm.nogroup.v1;
             id: 'argocd-telesto-test',
             name: 'ArgoCD (test)',
             config: {
-              clientID: 'Ov23liRefkARpwR7s7qs',
-              clientSecret: '22814fd9291d1f9a96dc46d8b5ecfbb128ed31a8',
+              clientID: $._config.githubClientID,
+              clientSecret: $._config.githubClientSecret,
               redirectURI: 'https://dex.telesto.test/callback',
               orgs: [
                 {
