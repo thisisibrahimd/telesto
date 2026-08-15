@@ -1,0 +1,207 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/thisisibrahimd/telesto/internal/config/serve-config",
+  "$ref": "#/$defs/ServeConfig",
+  "$defs": {
+    "Auth": {
+      "properties": {
+        "kratos": {
+          "$ref": "#/$defs/Kratos"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "kratos"
+      ]
+    },
+    "CSRF": {
+      "properties": {
+        "key": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "key"
+      ]
+    },
+    "Cookies": {
+      "properties": {
+        "cookieStoreKey": {
+          "type": "string"
+        },
+        "cookieEnvKey": {
+          "type": "string"
+        },
+        "sessionStoreKey": {
+          "type": "string"
+        },
+        "sessionEncKey": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "cookieStoreKey",
+        "cookieEnvKey",
+        "sessionStoreKey",
+        "sessionEncKey"
+      ]
+    },
+    "ExternalSecrets": {
+      "properties": {
+        "token": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "token"
+      ]
+    },
+    "InternalServer": {
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "tls": {
+          "$ref": "#/$defs/TLS"
+        },
+        "telestoDeployer": {
+          "$ref": "#/$defs/TelestoDeployer"
+        },
+        "externalSecrets": {
+          "$ref": "#/$defs/ExternalSecrets"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "address",
+        "telestoDeployer",
+        "externalSecrets"
+      ]
+    },
+    "Kratos": {
+      "properties": {
+        "internalEndpoint": {
+          "type": "string"
+        },
+        "publicEndpoint": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "internalEndpoint",
+        "publicEndpoint"
+      ]
+    },
+    "PublicServer": {
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "tls": {
+          "$ref": "#/$defs/TLS"
+        },
+        "cookies": {
+          "$ref": "#/$defs/Cookies"
+        },
+        "csrf": {
+          "$ref": "#/$defs/CSRF"
+        },
+        "auth": {
+          "$ref": "#/$defs/Auth"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "address",
+        "cookies",
+        "csrf",
+        "auth"
+      ]
+    },
+    "ServeConfig": {
+      "properties": {
+        "storage": {
+          "$ref": "#/$defs/Storage"
+        },
+        "server": {
+          "$ref": "#/$defs/Server"
+        },
+        "debug": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "storage",
+        "server"
+      ]
+    },
+    "Server": {
+      "properties": {
+        "public": {
+          "$ref": "#/$defs/PublicServer"
+        },
+        "internal": {
+          "$ref": "#/$defs/InternalServer"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "public",
+        "internal"
+      ]
+    },
+    "Storage": {
+      "properties": {
+        "dsn": {
+          "type": "string"
+        },
+        "migrate": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "dsn"
+      ]
+    },
+    "TLS": {
+      "properties": {
+        "cert": {
+          "type": "string"
+        },
+        "key": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "TelestoDeployer": {
+      "properties": {
+        "token": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "token"
+      ]
+    }
+  }
+}

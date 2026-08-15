@@ -140,6 +140,11 @@ gen-query:
 	find internal/storage/query -type f -name '*gen.go' -delete
 	go generate ./internal/storage/query/...
 
+.PHONY: gen-cfg-jsonschema
+gen-cfg-jsonschema:
+	go generate ./internal/config/...
+	
+
 # sops
 .PHONY: sops
 sops:

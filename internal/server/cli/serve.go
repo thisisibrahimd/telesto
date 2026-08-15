@@ -1,9 +1,7 @@
 package cli
 
 import (
-	"errors"
 	"log/slog"
-	"strings"
 
 	"github.com/mdobak/go-xerrors"
 	ory "github.com/ory/kratos-client-go/v26"
@@ -18,7 +16,7 @@ import (
 func NewServeCommand() *cobra.Command {
 	var serveCfgFile string
 	serveViperCfg := viper.New()
-	var serveCfg *config.ServeConfig
+	serveCfg := config.NewServeConfig()
 
 	cmd := &cobra.Command{
 		Use: "serve",
@@ -26,27 +24,12 @@ func NewServeCommand() *cobra.Command {
 			// logging
 			l := telemetry.NewLogger()
 
-			serveViperCfg.SetEnvPrefix("tl")
-			serveViperCfg.SetEnvKeyReplacer(strings.NewReplacer(".", "*", "-", "*"))
-			serveViperCfg.AllowEmptyEnv(true)
-
-			// handle the configuration file
-			if serveCfgFile != "" {
-				serveViperCfg.SetConfigFile(serveCfgFile)
-			} else {
-				serveViperCfg.AddConfigPath(".")
-				serveViperCfg.SetConfigName("telesto")
-				serveViperCfg.SetConfigType("json")
+			if err := loadViperConfig(serveViperCfg, true, serveCfg, serveCfgFile); err != nil {
+				return err
 			}
 
-			// read the config file
-			if err := serveViperCfg.ReadInConfig(); err != nil {
-				var configFileNotFoundError viper.ConfigFileNotFoundError
-				if !errors.As(err, &configFileNotFoundError) {
-					return err
-				}
-			}
-			if err := serveViperCfg.Unmarshal(&serveCfg); err != nil {
+			// validate the config
+			if err := config.Validate(serveCfg); err != nil {
 				return err
 			}
 
@@ -78,7 +61,7 @@ func NewServeCommand() *cobra.Command {
 				UserAgent: "teleesto-server",
 				Servers: ory.ServerConfigurations{
 					{
-						URL:         serveCfg.Auth.Kratos.InternalEndpoint,
+						URL:         serveCfg.Server.Public.Auth.Kratos.InternalEndpoint,
 						Description: "kratos public endpoint",
 					},
 				},
@@ -96,14 +79,14 @@ func NewServeCommand() *cobra.Command {
 
 			// server
 			srvCfg := &server.Config{
-				Address: serveCfg.Server.Address,
+				Address: serveCfg.Server.Public.Address,
 				Logger:  server.NewServerLogger(l),
 				// KeyStore:        srvKeyStore,
 				Storage:              sto,
 				OryKratosClient:      oryClient,
-				KratosPublicEndpoint: serveCfg.Auth.Kratos.PublicEndpoint,
-				TelestoDeployer:      serveCfg.Server.TelestoDeployer,
-				ExternalSecrets:      serveCfg.Server.ExternalSecrets,
+				KratosPublicEndpoint: serveCfg.Server.Public.Auth.Kratos.PublicEndpoint,
+				TelestoDeployer:      serveCfg.Server.Internal.TelestoDeployer,
+				ExternalSecrets:      serveCfg.Server.Internal.ExternalSecrets,
 			}
 			srv, err := server.NewServer(srvCfg)
 			if err != nil {
@@ -111,8 +94,8 @@ func NewServeCommand() *cobra.Command {
 			}
 
 			slog.Info("starting server")
-			if serveCfg.Server.Cert != "" && serveCfg.Server.Key != "" {
-				if err := srv.ListenAndServeTLS(serveCfg.Server.Cert, serveCfg.Server.Key); err != nil {
+			if serveCfg.Server.Public.TLS.Cert != "" && serveCfg.Server.Public.TLS.Key != "" {
+				if err := srv.ListenAndServeTLS(serveCfg.Server.Public.TLS.Cert, serveCfg.Server.Public.TLS.Key); err != nil {
 					slog.Error("failed to serve tls server", slog.Any("error", err))
 				}
 			} else {
@@ -124,7 +107,7 @@ func NewServeCommand() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&serveCfgFile, "config", "./telesto.json", "config file")
+	cmd.Flags().StringVar(&serveCfgFile, "config", DEFAULT_CONFIG_FILE, "config file")
 
 	return cmd
 }
