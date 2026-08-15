@@ -3,10 +3,35 @@
   "version": "2",
   "linters": {
     "default": "standard",
+    "enable": [
+      "godoclint"
+    ],
+    "settings": {
+      "depguard": {
+        "rules": {
+          "no-reflect": {
+            "deny": [
+              {
+                "pkg": "reflect",
+                "desc": "reflect bad"
+              }
+            ]
+          }
+        }
+      }
+    },
     "exclusions": {
       "paths": [
         "deploy/.*",
         "templates/*"
+      ],
+      "rules": [
+        {
+          "path": "_test\\.go$",
+          "linters": [
+            "godoclint"
+          ]
+        }
       ]
     }
   },
