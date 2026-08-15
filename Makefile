@@ -153,4 +153,7 @@ install-local-root-ca-macos:
 	mkdir -p tmp
 	kubectl get secrets -n cert-manager cert-root-ca-telesto -o json | jq -r '.data.["tls.crt"]' | base64 -d > ./tmp/ca.crt
 	sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ./tmp/ca.crt
-	
+
+.PHONY: gen-token
+gen-token:
+	openssl rand -hex 32
