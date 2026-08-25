@@ -1,27 +1,18 @@
-KIND_CLUSTER?=cluster-local-telesto
-KIND_CLUSTER_NAME?=cluster-local-telesto
-KIND_CLUSTER_CONFIG?=deploy/$(KIND_CLUSTER_NAME)/$(KIND_CLUSTER_NAME).yaml
-KIND_CLUSTER_KUBECONFIG?=deploy/$(KIND_CLUSTER_NAME)/$(KIND_CLUSTER_NAME).kubeconfig.yaml
-LOAD_CONTAINER_IMAGE?=true
-
-## deploy
-### kube-bench test security of clusters
-# .PHONY: kube-bench
-# kube-bench:
-# 	kubectl apply -f https://raw.githubusercontent.com/aquasecurity/kube-bench/refs/tags/v0.15.6/job.yaml
-# 	PODNAME=$$(kubectl get po -l job-name=kube-bench -o json | jq '.items[0].metadata.name' -r); kubectl logs $$PODNAME
-
+## jsonnet-bundler
 .PHONY: jb-update
 jb-update:
 	cd deploy/ && jb update
 
+.PHONY: jb-install
+jb-install:
+	cd deploy/ && jb install
+
+## tk charts managements
 .PHONY: charts-vendor
 charts-vendor:
 	cd deploy/ && tk tool charts vendor
-
-.PHONY: install-tk-deps
-install-tk-deps: jb-update charts-vendor
 	
+## tanka
 TANKA_ENVIRONMENT_PATH=deploy/environments/local
 TANKA_ENVIRONMENT_NAME=$(notdir $(TANKA_ENVIRONMENT_PATH))
 TANKA_EXT_FLAGS = \
@@ -29,11 +20,6 @@ TANKA_EXT_FLAGS = \
 TANKA_CRD_FILTER=--target 'CustomResourceDefinition/.+'
 TANKA_NON_CRD_FILTER=--target '!CustomResourceDefinition/.+'
 TANKA_ARGS:=
-### tanka
-.PHONY: tk
-tk:
-	tk $(TANKA_ARGS)
-
 .PHONY: tk-lint
 tk-lint:
 	tk lint $(TANKA_ENVIRONMENT_PATH)
@@ -54,16 +40,12 @@ tk-apply:
 tk-prune:
 	tk prune $(TANKA_ENVIRONMENT_PATH) $(TANKA_EXT_FLAGS) --auto-approve always
 
-.PHONY: vendor-charts
-vendor-charts:
-	tk tool charts vednor
-
-### jsonnet-bundler
-.PHONY: install
-install:
-	jb install
-
-### kind cluster management
+## kind cluster management
+KIND_CLUSTER?=cluster-local-telesto
+KIND_CLUSTER_NAME?=cluster-local-telesto
+KIND_CLUSTER_CONFIG?=deploy/$(KIND_CLUSTER_NAME)/$(KIND_CLUSTER_NAME).yaml
+KIND_CLUSTER_KUBECONFIG?=deploy/$(KIND_CLUSTER_NAME)/$(KIND_CLUSTER_NAME).kubeconfig.yaml
+LOAD_CONTAINER_IMAGE?=true
 .PHONY: cluster-create
 cluster-create:
 	kind create cluster --config "$(KIND_CLUSTER_CONFIG)" --kubeconfig $(KIND_CLUSTER_KUBECONFIG)
@@ -112,7 +94,6 @@ lint:
 release:
 	goreleaser release --clean
 
-
 .PHONY: kind-lb
 kind-lb:
 	rm .etchosts || echo '.etchosts is not existent';
@@ -141,7 +122,7 @@ sync-gw-to-hosts:
 sync-gw-to-hosts-watch:
 	while true; do make sync-gw-to-hosts; sleep 5; done
     
-# # test otelcols instances
+## test otelcols instances
 test-otelcol ID:
 	telemetrygen traces --otlp-endpoint $(TELESTO_ID).t.telesto.test:4318 --otlp-header Authorization=\"Bearer\ $$(TELESTO_AUTH_TOKEN)\" --traces 1 --otlp-http
 
@@ -155,7 +136,6 @@ gen-query:
 gen-cfg-jsonschema:
 	go generate ./internal/config/...
 	
-
 # sops
 .PHONY: sops
 sops:
@@ -169,6 +149,9 @@ install-local-root-ca-macos:
 	mkdir -p tmp
 	kubectl get secrets -n cert-manager cert-root-ca-telesto -o json | jq -r '.data.["tls.crt"]' | base64 -d > ./tmp/ca.crt
 	sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ./tmp/ca.crt
+
+
+## util
 
 .PHONY: gen-token
 gen-token:
