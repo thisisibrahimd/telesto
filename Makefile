@@ -11,6 +11,17 @@ LOAD_CONTAINER_IMAGE?=true
 # 	kubectl apply -f https://raw.githubusercontent.com/aquasecurity/kube-bench/refs/tags/v0.15.6/job.yaml
 # 	PODNAME=$$(kubectl get po -l job-name=kube-bench -o json | jq '.items[0].metadata.name' -r); kubectl logs $$PODNAME
 
+.PHONY: jb-update
+jb-update:
+	cd deploy/ && jb update
+
+.PHONY: charts-vendor
+charts-vendor:
+	cd deploy/ && tk tool charts vendor
+
+.PHONY: install-tk-deps
+install-tk-deps: jb-update charts-vendor
+	
 TANKA_ENVIRONMENT_PATH=deploy/environments/local
 TANKA_ENVIRONMENT_NAME=$(notdir $(TANKA_ENVIRONMENT_PATH))
 TANKA_EXT_FLAGS = \
