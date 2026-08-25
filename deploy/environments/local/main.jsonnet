@@ -1,6 +1,8 @@
 // util
 local nsutil = import '../../lib/util/ns.libsonnet';
 
+local tc = import '../../lib/telesto-config/config.libsonnet';
+
 // namespace management
 local _namespaces = [
   'argocd',
@@ -47,9 +49,8 @@ local secrets = std.parseJson(secretsJson);
   // argocd installation
   argocd: (import '../../lib/argocd/argocd.libsonnet') + {
     _config+:: {
-      oidcClientSecret: secrets.dex.clients.argocd.secret
-      
-    }
+      oidcClientSecret: secrets.dex.clients.argocd.secret,
+    },
   },
 
   // auth solution
@@ -67,12 +68,19 @@ local secrets = std.parseJson(secretsJson);
       _global: {
         namespace: 'app',
       },
-      clusterIssuerRefName: $.ca._config.clusterIssuerName,
-      telestoDeployerToken: secrets.server.telestoDeployerToken,
-      externalSecretsToken: secrets.server.externalSecretsToken,
+      issuerName: $.ca._config.clusterIssuerName,
+      telesto+: {
+        config+: tc.server.public.cookies.withCookieEncKey(secrets.server.public.cookies.cookieEncKey)
+                + tc.server.public.cookies.withCookieStoreKey(secrets.server.public.cookies.cookieStoreKey)
+                + tc.server.public.cookies.withSessionEncKey(secrets.server.public.cookies.sessionEncKey)
+                + tc.server.public.cookies.withSessionStoreKey(secrets.server.public.cookies.sessionStoreKey)
+                + tc.server.public.csrf.withKey(secrets.server.public.csrf.key)
+                + tc.server.private.telestoDeployer.withToken(secrets.server.private.telestoDeployer.token)
+                + tc.server.private.externalSecrets.withToken(secrets.server.private.externalSecrets.token),
+      },
     },
     _images+:: {
-      telesto: 'ghcr.io/thisisibrahimd/telesto:0.0.5-next-amd64',
+      telesto: 'ghcr.io/thisisibrahimd/telesto:0.0.6-next-amd64',
     },
   },
 
@@ -81,7 +89,7 @@ local secrets = std.parseJson(secretsJson);
     _config+:: {
       clusterIssuerRefName: $.ca._config.clusterIssuerName,
 
-      telestoDeployerToken: secrets.server.telestoDeployerToken
+      telestoDeployerToken: secrets.server.private.telestoDeployer.token,
     },
   },
 }
