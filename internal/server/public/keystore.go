@@ -1,4 +1,4 @@
-package server
+package public
 
 import "github.com/gorilla/securecookie"
 
@@ -10,16 +10,8 @@ type KeyStore struct {
 	CsrfKey         []byte
 }
 
-func BadKeyStore() *KeyStore {
-	b := []byte("abcdefghijklmnopqrstuvwxyz123456")
-	return &KeyStore{
-		CookieStoreKey:  b,
-		CookieEncKey:    b,
-		SessionStoreKey: b,
-		SessionEncKey:   b,
-		CsrfKey:         b,
-	}
-
+func NewKeyStore() *KeyStore {
+	return nil
 }
 
 func RandomKeyStore() *KeyStore {
@@ -30,5 +22,4 @@ func RandomKeyStore() *KeyStore {
 		SessionEncKey:   securecookie.GenerateRandomKey(32),
 		CsrfKey:         securecookie.GenerateRandomKey(32),
 	}
-
 }

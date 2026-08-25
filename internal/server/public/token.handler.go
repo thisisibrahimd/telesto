@@ -1,23 +1,33 @@
-package web
+package public
 
 import (
 	"log/slog"
 	"net/http"
 
+	"github.com/gorilla/schema"
 	"github.com/jinzhu/copier"
+	"github.com/mdobak/go-xerrors"
 	"github.com/thisisibrahimd/telesto/internal/server/middlewares"
+	"github.com/thisisibrahimd/telesto/internal/server/services"
 	"github.com/thisisibrahimd/telesto/internal/storage/model"
-	"github.com/thisisibrahimd/telesto/internal/storage/repository"
 	"github.com/thisisibrahimd/telesto/internal/token"
 	"github.com/thisisibrahimd/telesto/internal/utils"
 	"github.com/thisisibrahimd/telesto/templates/pages/tokens"
 )
 
-// GetTokens implements [WebServerInterface].
-func (s *WebServer) GetTokens(w http.ResponseWriter, r *http.Request) {
+type TokenHandler struct {
+	svcs          *services.Services
+	schemaDecoder *schema.Decoder
+}
+
+func newTokenHandler(svcs *services.Services, sd *schema.Decoder) *TokenHandler {
+	return &TokenHandler{svcs: svcs, schemaDecoder: sd}
+}
+
+func (h *TokenHandler) GetTokens(w http.ResponseWriter, r *http.Request) {
 	userID := middlewares.GetUserID(r.Context())
 
-	userTokens, err := s.storage.Repos.Token.ByUser(userID).GetAll(r.Context())
+	userTokens, err := h.svcs.Token.ByUser(userID).GetAll(r.Context())
 	if err != nil {
 		slog.Error("failed to retrive tokens", slog.Any("error", err))
 	}
@@ -27,8 +37,7 @@ func (s *WebServer) GetTokens(w http.ResponseWriter, r *http.Request) {
 	tokens.Index(tokens.TokensViewModel{Tokens: tokenModels}).Render(r.Context(), w)
 }
 
-// GetToken implements [WebServerInterface].
-func (s *WebServer) GetToken(w http.ResponseWriter, r *http.Request) {
+func (h *TokenHandler) GetToken(w http.ResponseWriter, r *http.Request) {
 	userID := middlewares.GetUserID(r.Context())
 	tokenID := r.PathValue("id")
 	if tokenID == "" {
@@ -36,30 +45,26 @@ func (s *WebServer) GetToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userToken, err := s.storage.Repos.Token.ByUser(userID).Get(r.Context(), tokenID)
+	userToken, err := h.svcs.Token.ByUser(userID).Get(r.Context(), tokenID)
 	if err != nil {
 		slog.Error("no token", slog.Any("error", err))
+		http.Error(w, xerrors.New("no token").Error(), http.StatusInternalServerError)
 		return
 	}
-
-	defer func() {
-		_, err := s.storage.Repos.Token.(*repository.TokenRepo).MarkTokenSeen(r.Context(), tokenID)
-		if err != nil {
-			slog.Error("unable to set token to seen", slog.Any("error", err))
-			return
-		}
-	}()
 
 	// render
 	tokenModel := convertToken(userToken)
 	tokenModel.TelestoID = userToken.TelestoID
 	tokens.Show(*tokenModel).Render(r.Context(), w)
+
+	if err := h.svcs.Token.ByUser(userID).(services.ITokenService).MarkSeen(r.Context(), tokenID); err != nil {
+		slog.Error("error marking token as seen", slog.Any("error", err))
+	}
 }
 
-// NewToken implements [WebServerInterface].
-func (s *WebServer) NewToken(w http.ResponseWriter, r *http.Request) {
-	userId := middlewares.GetUserID(r.Context())
-	telestos, err := s.storage.Repos.Telesto.ByUser(userId).GetAll(r.Context())
+func (h *TokenHandler) NewToken(w http.ResponseWriter, r *http.Request) {
+	userID := middlewares.GetUserID(r.Context())
+	telestos, err := h.svcs.Telesto.ByUser(userID).GetAll(r.Context())
 	if err != nil {
 		return
 	}
@@ -72,9 +77,8 @@ type NewTokenForm struct {
 	TelestoID string `json:"telesto_id" schema:"telesto_id,required"`
 }
 
-// NewTokenSubmit implements [WebServerInterface].
-func (s *WebServer) NewTokenSubmit(w http.ResponseWriter, r *http.Request) {
-	userId := middlewares.GetUserID(r.Context())
+func (h *TokenHandler) NewTokenSubmit(w http.ResponseWriter, r *http.Request) {
+	userID := middlewares.GetUserID(r.Context())
 
 	err := r.ParseForm()
 	if err != nil {
@@ -83,12 +87,12 @@ func (s *WebServer) NewTokenSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var newTokenForm NewTokenForm
-	if err := s.decoder.Decode(&newTokenForm, r.Form); err != nil {
+	if err := h.schemaDecoder.Decode(&newTokenForm, r.Form); err != nil {
 		slog.Error("failed to decode form", slog.Any("error", err))
 		return
 	}
 
-	selectedTelesto, err := s.storage.Repos.Telesto.ByUser(userId).Get(r.Context(), newTokenForm.TelestoID)
+	selectedTelesto, err := h.svcs.Telesto.ByUser(userID).Get(r.Context(), newTokenForm.TelestoID)
 	if err != nil {
 		slog.Error("failed to find selected form", slog.Any("error", err))
 		return
@@ -97,28 +101,26 @@ func (s *WebServer) NewTokenSubmit(w http.ResponseWriter, r *http.Request) {
 	t := token.NewToken()
 	newToken := &model.Token{
 		Name:      newTokenForm.Name,
-		UserID:    userId,
+		UserID:    userID,
 		TelestoID: selectedTelesto.ID,
 		Token:     t,
 		Seen:      false,
 	}
-	slog.Info(selectedTelesto.ID)
-	if err := s.storage.Repos.Token.New(r.Context(), newToken); err != nil {
+	if err := h.svcs.Token.ByUser(userID).Create(r.Context(), newToken); err != nil {
 		slog.Error("failed to create new token", slog.Any("error", err))
 		return
 	}
 	http.Redirect(w, r, "/tokens/"+newToken.ID, http.StatusSeeOther)
 }
 
-// EditToken implements [WebServerInterface].
-func (s *WebServer) EditToken(w http.ResponseWriter, r *http.Request) {
-	userId := middlewares.GetUserID(r.Context())
+func (h *TokenHandler) EditToken(w http.ResponseWriter, r *http.Request) {
+	userID := middlewares.GetUserID(r.Context())
 	tokenID := r.PathValue("id")
 	if tokenID == "" {
 		return
 	}
 
-	userToken, err := s.storage.Repos.Token.ByUser(userId).Get(r.Context(), tokenID)
+	userToken, err := h.svcs.Token.ByUser(userID).Get(r.Context(), tokenID)
 	if err != nil {
 		return
 	}
@@ -130,9 +132,8 @@ type EditTokenForm struct {
 	Name string `json:"name" schema:"name,required"`
 }
 
-// EditTokenSubmit implements [WebServerInterface].
-func (s *WebServer) EditTokenSubmit(w http.ResponseWriter, r *http.Request) {
-	userId := middlewares.GetUserID(r.Context())
+func (h *TokenHandler) EditTokenSubmit(w http.ResponseWriter, r *http.Request) {
+	userID := middlewares.GetUserID(r.Context())
 	tokenID := r.PathValue("id")
 	if tokenID == "" {
 		return
@@ -142,28 +143,27 @@ func (s *WebServer) EditTokenSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var updatedTokenForm EditTelestoForm
-	if err := s.decoder.Decode(&updatedTokenForm, r.Form); err != nil {
+	if err := h.schemaDecoder.Decode(&updatedTokenForm, r.Form); err != nil {
 		return
 	}
 	updatedToken := &model.Token{
 		Name: updatedTokenForm.Name,
 	}
 
-	if _, err := s.storage.Repos.Token.ByUser(userId).Edit(r.Context(), tokenID, updatedToken); err != nil {
+	if err := h.svcs.Token.ByUser(userID).Update(r.Context(), tokenID, updatedToken); err != nil {
 		return
 	}
 	http.Redirect(w, r, "/tokens/"+tokenID, http.StatusSeeOther)
 }
 
-// DeleteToken implements [WebServerInterface].
-func (s *WebServer) DeleteToken(w http.ResponseWriter, r *http.Request) {
-	userId := middlewares.GetUserID(r.Context())
+func (h *TokenHandler) DeleteToken(w http.ResponseWriter, r *http.Request) {
+	userID := middlewares.GetUserID(r.Context())
 	tokenID := r.PathValue("id")
 	if tokenID == "" {
 		return
 	}
 
-	if _, err := s.storage.Repos.Token.ByUser(userId).Delete(r.Context(), tokenID); err != nil {
+	if err := h.svcs.Token.ByUser(userID).Delete(r.Context(), tokenID); err != nil {
 		return
 	}
 

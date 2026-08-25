@@ -37,7 +37,7 @@ func (bt *BearerTokenMiddleware) Handler(next http.Handler) http.Handler {
 	})
 }
 
-func BearerToken(token string) func(http.Handler) http.Handler {
+func BearerToken(token string) Middleware {
 	m := &BearerTokenMiddleware{
 		token:  token,
 		header: "Authorization",

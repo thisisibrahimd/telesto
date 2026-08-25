@@ -2,7 +2,6 @@ package cli
 
 import (
 	"errors"
-	"log/slog"
 	"strings"
 
 	"github.com/mdobak/go-xerrors"
@@ -34,12 +33,12 @@ func loadViperConfig(v *viper.Viper, loadEnv bool, cfg *config.ServeConfig, cfgF
 			return xerrors.New("error finding file", err)
 		}
 	}
-	slog.Debug("successfully read config file", slog.String("config", cfgFile))
+	// slog.Debug("successfully read config file", slog.String("config", cfgFile))
 
 	if err := v.Unmarshal(cfg); err != nil {
 		return xerrors.New("error parsing config")
 	}
-	slog.Debug("successfully parse config file", slog.String("config", cfgFile))
+	// slog.Debug("successfully parse config file", slog.String("config", cfgFile))
 
 	return nil
 }

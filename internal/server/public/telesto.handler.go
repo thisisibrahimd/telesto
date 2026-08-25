@@ -1,4 +1,4 @@
-package web
+package public
 
 import (
 	"encoding/json"
@@ -6,18 +6,31 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/gorilla/schema"
 	"github.com/jinzhu/copier"
 	"github.com/thisisibrahimd/telesto/internal/server/middlewares"
+	"github.com/thisisibrahimd/telesto/internal/server/services"
 	"github.com/thisisibrahimd/telesto/internal/storage/model"
 	"github.com/thisisibrahimd/telesto/internal/utils"
 	"github.com/thisisibrahimd/telesto/templates/pages/telestos"
 )
 
+type TelestoHandler struct {
+	svcs          *services.Services
+	schemaDecoder *schema.Decoder
+}
+
+func newTelestoHandler(svcs *services.Services, sd *schema.Decoder) *TelestoHandler {
+	return &TelestoHandler{svcs: svcs, schemaDecoder: sd}
+}
+
 // ListTelestos implements [WebServerInterface].
-func (s *WebServer) GetTelestos(w http.ResponseWriter, r *http.Request) {
+func (h *TelestoHandler) GetTelestos(w http.ResponseWriter, r *http.Request) {
+	// read input
 	userID := middlewares.GetUserID(r.Context())
 
-	userTelestos, err := s.storage.Repos.Telesto.ByUser(userID).GetAll(r.Context())
+	// do stuff
+	userTelestos, err := h.svcs.Telesto.ByUser(userID).GetAll(r.Context())
 	if err != nil {
 		slog.Error("failed to retirve telestos", slog.Any("error", err))
 	}
@@ -28,7 +41,8 @@ func (s *WebServer) GetTelestos(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetTelesto implements [WebServerInterface].
-func (s *WebServer) GetTelesto(w http.ResponseWriter, r *http.Request) {
+func (h *TelestoHandler) GetTelesto(w http.ResponseWriter, r *http.Request) {
+	// read input
 	userID := middlewares.GetUserID(r.Context())
 	telestoID := r.PathValue("id")
 	if telestoID == "" {
@@ -36,7 +50,8 @@ func (s *WebServer) GetTelesto(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userTelesto, err := s.storage.Repos.Telesto.ByUser(userID).Get(r.Context(), telestoID)
+	// do stuff
+	userTelesto, err := h.svcs.Telesto.ByUser(userID).Get(r.Context(), telestoID)
 	if err != nil {
 		slog.Error("no telesto", slog.Any("error", err))
 		return
@@ -51,19 +66,22 @@ type GetTelestoTokensResponse struct {
 }
 
 // GetTelestoTokens implements [WebServerInterface].
-func (s *WebServer) GetTelestoTokens(w http.ResponseWriter, r *http.Request) {
+func (h *TelestoHandler) GetTelestoTokens(w http.ResponseWriter, r *http.Request) {
+	// read input
 	telestoID := r.PathValue("id")
 	if telestoID == "" {
-		slog.Error("")
+		slog.Error("no ")
 		return
 	}
 
-	telesto, err := s.storage.Repos.Telesto.Get(r.Context(), telestoID)
+	// do stuff
+	telesto, err := h.svcs.Telesto.Get(r.Context(), telestoID)
 	if err != nil {
 		slog.Error("no telesto", slog.Any("error", err))
 		return
 	}
 
+	// render
 	resp := &GetTelestoTokensResponse{
 		Tokens: "",
 	}
@@ -79,7 +97,7 @@ func (s *WebServer) GetTelestoTokens(w http.ResponseWriter, r *http.Request) {
 }
 
 // NewTelesto implements [WebServerInterface].
-func (s *WebServer) NewTelesto(w http.ResponseWriter, r *http.Request) {
+func (h *TelestoHandler) NewTelesto(w http.ResponseWriter, r *http.Request) {
 	telestos.New().Render(r.Context(), w)
 }
 
@@ -88,7 +106,8 @@ type NewTelestoForm struct {
 }
 
 // NewTelestoExec implements [WebServerInterface].
-func (s *WebServer) NewTelestoSubmit(w http.ResponseWriter, r *http.Request) {
+func (h *TelestoHandler) NewTelestoSubmit(w http.ResponseWriter, r *http.Request) {
+	// read input
 	userId := middlewares.GetUserID(r.Context())
 
 	err := r.ParseForm()
@@ -97,27 +116,31 @@ func (s *WebServer) NewTelestoSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var newTelestoForm NewTelestoForm
-	if err := s.decoder.Decode(&newTelestoForm, r.Form); err != nil {
+	if err := h.schemaDecoder.Decode(&newTelestoForm, r.Form); err != nil {
 		return
 	}
 	newTelesto := &model.Telesto{}
 	copier.Copy(newTelesto, newTelestoForm)
 	newTelesto.UserID = userId
-	if err := s.storage.Repos.Telesto.New(r.Context(), newTelesto); err != nil {
+
+	// do stuff
+	if err := h.svcs.Telesto.Create(r.Context(), newTelesto); err != nil {
 		return
 	}
+
+	// render
 	http.Redirect(w, r, "/telestos/"+newTelesto.ID, http.StatusSeeOther)
 }
 
 // EditTelesto implements [WebServerInterface].
-func (s *WebServer) EditTelesto(w http.ResponseWriter, r *http.Request) {
+func (h *TelestoHandler) EditTelesto(w http.ResponseWriter, r *http.Request) {
 	userId := middlewares.GetUserID(r.Context())
 	telestoId := r.PathValue("id")
 	if telestoId == "" {
 		return
 	}
 
-	telesto, err := s.storage.Repos.Telesto.ByUser(userId).Get(r.Context(), telestoId)
+	telesto, err := h.svcs.Telesto.ByUser(userId).Get(r.Context(), telestoId)
 	if err != nil {
 		return
 	}
@@ -130,7 +153,8 @@ type EditTelestoForm struct {
 }
 
 // EditTelestoExec implements [WebServerInterface].
-func (s *WebServer) EditTelestoSubmit(w http.ResponseWriter, r *http.Request) {
+func (h *TelestoHandler) EditTelestoSubmit(w http.ResponseWriter, r *http.Request) {
+	// read input
 	userId := middlewares.GetUserID(r.Context())
 	telestoId := r.PathValue("id")
 	if telestoId == "" {
@@ -141,28 +165,31 @@ func (s *WebServer) EditTelestoSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var updatedTelestoForm EditTelestoForm
-	if err := s.decoder.Decode(&updatedTelestoForm, r.Form); err != nil {
+	if err := h.schemaDecoder.Decode(&updatedTelestoForm, r.Form); err != nil {
 		return
 	}
 	updatedTelesto := &model.Telesto{
 		Name: updatedTelestoForm.Name,
 	}
 
-	if _, err := s.storage.Repos.Telesto.ByUser(userId).Edit(r.Context(), telestoId, updatedTelesto); err != nil {
+	// do stuff
+	if err := h.svcs.Telesto.ByUser(userId).Update(r.Context(), telestoId, updatedTelesto); err != nil {
 		return
 	}
+
+	// render
 	http.Redirect(w, r, "/telestos/"+telestoId, http.StatusSeeOther)
 }
 
 // DeleteTelesto implements [WebServerInterface].
-func (s *WebServer) DeleteTelesto(w http.ResponseWriter, r *http.Request) {
+func (h *TelestoHandler) DeleteTelesto(w http.ResponseWriter, r *http.Request) {
 	userId := middlewares.GetUserID(r.Context())
 	telestoId := r.PathValue("id")
 	if telestoId == "" {
 		return
 	}
 
-	if _, err := s.storage.Repos.Telesto.ByUser(userId).Delete(r.Context(), telestoId); err != nil {
+	if err := h.svcs.Telesto.ByUser(userId).Delete(r.Context(), telestoId); err != nil {
 		return
 	}
 

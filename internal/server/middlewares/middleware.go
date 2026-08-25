@@ -1,3 +1,8 @@
 package middlewares
 
-type contextKey string
+import "net/http"
+
+type (
+	contextKey string
+	Middleware func(http.Handler) http.Handler
+)

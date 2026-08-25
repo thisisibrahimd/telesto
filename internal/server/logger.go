@@ -27,13 +27,12 @@ func (l *Logger) Middleware(next http.Handler) http.Handler {
 				slog.Int("bytes", ww.BytesWritten()),
 				slog.Duration("elasped", time.Since(start)),
 			)
-
 		}()
 
 		next.ServeHTTP(ww, r)
 	})
 }
 
-func NewServerLogger(l *telemetry.Logger) *Logger {
-	return &Logger{l}
+func NewLogger(l *telemetry.Logger, server string) *Logger {
+	return &Logger{l.NewSubLogger(server)}
 }
