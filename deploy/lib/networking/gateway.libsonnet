@@ -6,6 +6,8 @@ local cm = import 'github.com/jsonnet-libs/cert-manager-libsonnet/1.19/main.libs
 local certificate = cm.nogroup.v1.certificate;
 local issuer = cm.nogroup.v1.issuer;
 
+local certs = import '../util/certs.libsonnet';
+
 {
   _config:: {
     _global: {
@@ -18,6 +20,8 @@ local issuer = cm.nogroup.v1.issuer;
     serverCertificateName: 'nginx-gateway',
     agentCertificateName: 'nginx',
 
+    issuerRefName: '',
+    issuerRefKind: '',
     clusterIssuerRefName: 'cluster-issuer-central',
   },
   clusterIssuerRef:: certificate.spec.issuerRef.withName($._config.clusterIssuerRefName)

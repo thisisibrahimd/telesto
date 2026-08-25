@@ -1,4 +1,3 @@
-local k = import 'github.com/grafana/jsonnet-libs/ksonnet-util/kausal.libsonnet';
 local tanka = import 'github.com/grafana/jsonnet-libs/tanka-util/main.libsonnet';
 local helm = tanka.helm.new(std.thisFile);
 
@@ -6,18 +5,25 @@ local dnsutil = import '../../lib/util/dns.libsonnet';
 
 local cm = import 'github.com/jsonnet-libs/cert-manager-libsonnet/1.19/main.libsonnet';
 
+local tc = import '../telesto-config/config.libsonnet';
+
+local certs = import '../util/certs.libsonnet';
+
+local sgw = import '../util/simple_gateway.libsonnet';
+
+local secureGateway = import '../util/secure_gateway.libsonnet';
 
 local cnpg = import '../cloudnative-pg-crds/1.30.0/main.libsonnet';
 local databaseRole = cnpg.postgresql.v1.databaseRole;
 local database = cnpg.postgresql.v1.database;
 local cluster = cnpg.postgresql.v1.cluster;
 
-
 local es = import '../external-secrets-crds/2.9.0/main.libsonnet';
 local externalSecret = es.nogroup.v1.externalSecret;
 local clusterSecretStore = es.nogroup.v1.clusterSecretStore;
 local secretStore = es.nogroup.v1.secretStore;
 
+local k = import 'github.com/grafana/jsonnet-libs/ksonnet-util/kausal.libsonnet';
 local deployment = k.apps.v1.deployment;
 local container = k.core.v1.container;
 local cPort = k.core.v1.containerPort;
@@ -29,14 +35,38 @@ local service = k.core.v1.service;
       namespace: 'app',
     },
     clusterIssuerRefName: '',
+    issuerName: '',
+    issuerKind: 'ClusterIssuer',
+    domain: 'app.telesto.test',
+    bundleName: 'bundle-telesto',
     telesto: {
-      telesto: {
-        port: 443,
-        name: 'telesto',
+      config: {
+        server: {
+          public: {
+            address: ':443',
+            cookies: {
+              cookieEncKey: '',
+              cookieStoreKey: '',
+              sessionEncKey: '',
+              sessionStoreKey: '',
+            },
+            csrf: {
+              key: '',
+            },
+
+          },
+          private: {
+            address: ':8443',
+            telestoDeployer: {
+              token: '',
+            },
+            externalSecrets: {
+              token: '',
+            },
+          },
+        },
       },
     },
-    externalSecretsToken: '',
-    telestoDeployerToken: '',
   },
 
   _images:: {
@@ -45,27 +75,47 @@ local service = k.core.v1.service;
 
   container::
     container.new('telesto', $._images.telesto),
+  publicPort:: std.parseInt(std.splitLimit($._config.telesto.config.server.public.address, ':', 1)[1]),
+  privatePort:: std.parseInt(std.splitLimit($._config.telesto.config.server.private.address, ':', 1)[1]),
 
   deployment: deployment.new(
                 'telesto',
                 1,
                 containers=[
                   self.container
-                  + container.withPorts(cPort.new('api', $._config.telesto.telesto.port))
+                  + container.withPortsMixin(cPort.new('public', $.publicPort))
+                  + container.withPortsMixin(cPort.new('private', $.privatePort))
                   + container.withCommand(['/usr/bin/telesto', 'serve', '--config', '/etc/telesto/telesto.json'])
+                  + container.readinessProbe.httpGet.withPort($.publicPort)
+                  + container.readinessProbe.httpGet.withPath('/ping')
+                  + container.readinessProbe.httpGet.withScheme('HTTPS')
+                  + container.readinessProbe.withPeriodSeconds(1)
+                  + container.readinessProbe.withInitialDelaySeconds(3)
+                  + container.readinessProbe.withFailureThreshold(5)
+                  + container.readinessProbe.withSuccessThreshold(3)
                   + container.withVolumeMountsMixin({
                     name: 'db-client-cert',
                     mountPath: '/etc/certs/db',
                     readOnly: true,
                   })
                   + container.withVolumeMountsMixin({
-                    name: 'server-cert',
-                    mountPath: '/etc/certs/server',
+                    name: 'public-server-cert',
+                    mountPath: '/etc/certs/server/public',
+                    readOnly: true,
+                  })
+                  + container.withVolumeMountsMixin({
+                    name: 'private-server-cert',
+                    mountPath: '/etc/certs/server/private',
                     readOnly: true,
                   })
                   + container.withVolumeMountsMixin({
                     name: 'config',
                     mountPath: '/etc/telesto',
+                    readOnly: true,
+                  })
+                  + container.withVolumeMountsMixin({
+                    name: 'telesto-root-ca-cert',
+                    mountPath: '/etc/certs/ca',
                     readOnly: true,
                   }),
                 ],
@@ -81,9 +131,15 @@ local service = k.core.v1.service;
                 },
               })
               + deployment.spec.template.spec.withVolumesMixin({
-                name: 'server-cert',
+                name: 'public-server-cert',
                 secret: {
-                  secretName: 'cert-telesto-server',
+                  secretName: 'cert-telesto-public-server',
+                },
+              })
+              + deployment.spec.template.spec.withVolumesMixin({
+                name: 'private-server-cert',
+                secret: {
+                  secretName: 'cert-telesto-private-server',
                 },
               })
               + deployment.spec.template.spec.withVolumesMixin({
@@ -91,70 +147,78 @@ local service = k.core.v1.service;
                 secret: {
                   secretName: 'config-telesto',
                 },
+              })
+              + deployment.spec.template.spec.withVolumesMixin({
+                name: 'telesto-root-ca-cert',
+                configMap: {
+                  name: $._config.bundleName + "-root-ca",
+                },
               }),
-  service: k.util.serviceFor(self.deployment)
-           + service.metadata.withNamespace($._config._global.namespace),
+  publicService: service.new('telesto-public', { name: 'telesto' }, {
+                   protocol: 'TCP',
+                   port: $.publicPort,
+                   targetPort: $.publicPort,
+                 })
+                 + service.metadata.withNamespace($._config._global.namespace),
+  privateServer: service.new('telesto-private', { name: 'telesto' }, {
+                   protocol: 'TCP',
+                   port: $.privatePort,
+                   targetPort: $.privatePort,
+                 })
+                 + service.metadata.withNamespace($._config._global.namespace),
   secret: k.core.v1.secret.new('config-telesto', {
-            'telesto.json': std.base64(std.toString({
-              auth: {
-                kratos: {
-                  internalEndpoint: 'http://auth-kratos-public.auth',
-                  publicEndpoint: 'https://auth.telesto.test',
-                },
-              },
-              storage: {
-                migrate: true,
-                dsn: 'postgres://telesto-app@telesto-db-cluster-rw.app:5432/telesto?sslmode=verify-full&sslrootcert=/etc/certs/db/ca.crt&sslcert=/etc/certs/db/tls.crt&sslkey=/etc/certs/db/tls.key',
-              },
-              server: {
-                address: ':' + $._config.telesto.telesto.port,
-                port: $._config.telesto.telesto.port,
-                // cert: "/etc/certs/server/tls.crt",
-                // key: "/etc/certs/server/tls.key"
-                telestoDeployer: {
-                  token: $._config.telestoDeployerToken,
-                },
-                externalSecrets: {
-                  token: $._config.externalSecretsToken,
-                },
-              },
-            })),
-          }, 'Opaque')
+            'telesto.json': std.base64(std.toString(
+              tc.storage.withMigrate(true)
+              + tc.storage.withDsn('postgres://telesto-app@telesto-db-cluster-rw.app:5432/telesto?sslmode=verify-full&sslrootcert=/etc/certs/db/ca.crt&sslcert=/etc/certs/db/tls.crt&sslkey=/etc/certs/db/tls.key')
+              + tc.server.public.withAddress($._config.telesto.config.server.public.address)
+              + tc.server.public.withBaseUrl('https://app.telesto.test')
+              + tc.server.public.cookies.withCookieEncKey($._config.telesto.config.server.public.cookies.cookieEncKey)
+              + tc.server.public.cookies.withCookieStoreKey($._config.telesto.config.server.public.cookies.cookieStoreKey)
+              + tc.server.public.cookies.withSessionEncKey($._config.telesto.config.server.public.cookies.sessionEncKey)
+              + tc.server.public.cookies.withSessionStoreKey($._config.telesto.config.server.public.cookies.sessionStoreKey)
+              + tc.server.public.csrf.withKey($._config.telesto.config.server.public.csrf.key)
+              + tc.server.public.tls.withCaCert('/etc/certs/ca/ca.crt')
+              + tc.server.public.tls.withCert('/etc/certs/server/public/tls.crt')
+              + tc.server.public.tls.withKey('/etc/certs/server/public/tls.key')
+              + tc.server.public.auth.kratos.withInternalEndpoint('https://auth-kratos-public.auth')
+              + tc.server.public.auth.kratos.withPublicEndpoint('https://auth.telesto.test')
+              + tc.server.private.withAddress($._config.telesto.config.server.private.address)
+              + tc.server.private.tls.withCert('/etc/certs/server/private/tls.crt')
+              + tc.server.private.tls.withKey('/etc/certs/server/private/tls.key')
+              + tc.server.private.telestoDeployer.withToken($._config.telesto.config.server.private.telestoDeployer.token)
+              + tc.server.private.externalSecrets.withToken($._config.telesto.config.server.private.externalSecrets.token)
+            )),
+          })
           + k.core.v1.secret.metadata.withNamespace($._config._global.namespace),
-  certServer: cm.nogroup.v1.certificate.new('telesto-server')
-              + cm.nogroup.v1.certificate.metadata.withNamespace($._config._global.namespace)
-              + cm.nogroup.v1.certificate.spec.withCommonName('app.telesto.net')
-              + cm.nogroup.v1.certificate.spec.withSecretName('cert-telesto-server')
-              + cm.nogroup.v1.certificate.spec.withUsages([
-                'server auth',
-              ])
-              + cm.nogroup.v1.certificate.spec.privateKey.withAlgorithm('RSA')
-              + cm.nogroup.v1.certificate.spec.privateKey.withSize(4096)
-              + cm.nogroup.v1.certificate.spec.issuerRef.withName($._config.clusterIssuerRefName)
-              + cm.nogroup.v1.certificate.spec.issuerRef.withKind('ClusterIssuer')
-              + cm.nogroup.v1.certificate.spec.issuerRef.withGroup('cert-manager.io'),
-  gatewayTelestoApp: (import '../util/simple_gateway.libsonnet') + {
-    _config+:: {
-      _global: {
-        namespace: $._config._global.namespace,
-      },
-      name: 'telesto-app',
-      hostname: 'app.telesto.test',
-      gatewayClassName: 'nginx',
-      issuerRef: {
-        name: 'cluster-issuer-central',
-        kind: 'ClusterIssuer',
-      },
-      svc: {
-        name: 'telesto',
-        port: 443,
-      },
-    },
-  },
+  certPublicServer: certs.server.new(
+    name='telesto-public-server',
+    namespace=$._config._global.namespace,
+    commonName=$._config.domain,
+    issuerName=$._config.issuerName,
+    issuerKind=$._config.issuerKind,
+  ),
+  certPrivateServer: certs.server.new(
+    name='telesto-private-server',
+    namespace=$._config._global.namespace,
+    commonName='telesto-private.app',
+    issuerName=$._config.issuerName,
+    issuerKind=$._config.issuerKind,
+  ),
+  gateway: secureGateway.new(
+    name='telesto-app',
+    namespace=$._config._global.namespace,
+    hostname=$._config.domain,
+    gatewayClassName='nginx',
+    issuerName=$._config.issuerName,
+    issuerKind=$._config.issuerKind,
+    serviceName='telesto-public',
+    servicePort=$.publicPort,
+    caCertConfigMapName=$._config.bundleName
+  ),
 
   // secrets
   telestoClusterSecretStoreCredentials: k.core.v1.secret.new('telesto-cluster-secret-store-creds', {
-                                          token: std.base64($._config.externalSecretsToken),
+                                          token: std.base64($._config.telesto.config.server.private.externalSecrets.token),
                                         }, 'Opaque')
                                         + k.core.v1.secret.metadata.withNamespace($._config._global.namespace)
                                         + k.core.v1.secret.metadata.withLabels({
@@ -191,8 +255,8 @@ local service = k.core.v1.service;
                        )
                        + cm.nogroup.v1.certificate.spec.privateKey.withAlgorithm('ECDSA')
                        + cm.nogroup.v1.certificate.spec.privateKey.withSize(256)
-                       + cm.nogroup.v1.certificate.spec.issuerRef.withName($._config.clusterIssuerRefName)
-                       + cm.nogroup.v1.certificate.spec.issuerRef.withKind('ClusterIssuer')
+                       + cm.nogroup.v1.certificate.spec.issuerRef.withName($._config.issuerName)
+                       + cm.nogroup.v1.certificate.spec.issuerRef.withKind($._config.issuerKind)
                        + cm.nogroup.v1.certificate.spec.issuerRef.withGroup('cert-manager.io'),
   issuerDBTeletsoServer: cm.nogroup.v1.issuer.new('issuer-db-telesto-server')
                          + cm.nogroup.v1.issuer.metadata.withNamespace($._config._global.namespace)
@@ -206,8 +270,8 @@ local service = k.core.v1.service;
                        + cm.nogroup.v1.certificate.spec.withCommonName('streaming-replica')
                        + cm.nogroup.v1.certificate.spec.withSecretName('cert-db-telesto-client')
                        + cm.nogroup.v1.certificate.spec.withUsages(['client auth'])
-                       + cm.nogroup.v1.certificate.spec.issuerRef.withName($._config.clusterIssuerRefName)
-                       + cm.nogroup.v1.certificate.spec.issuerRef.withKind('ClusterIssuer')
+                       + cm.nogroup.v1.certificate.spec.issuerRef.withName($._config.issuerName)
+                       + cm.nogroup.v1.certificate.spec.issuerRef.withKind($._config.issuerKind)
                        + cm.nogroup.v1.certificate.spec.issuerRef.withGroup('cert-manager.io'),
   issuerDBTelestoClient: cm.nogroup.v1.issuer.new('issuer-db-telesto-client')
                          + cm.nogroup.v1.issuer.metadata.withNamespace($._config._global.namespace)
@@ -251,8 +315,8 @@ local service = k.core.v1.service;
                               ])
                               + cm.nogroup.v1.certificate.spec.privateKey.withAlgorithm('ECDSA')
                               + cm.nogroup.v1.certificate.spec.privateKey.withSize(256)
-                              + cm.nogroup.v1.certificate.spec.issuerRef.withName($._config.clusterIssuerRefName)
-                              + cm.nogroup.v1.certificate.spec.issuerRef.withKind('ClusterIssuer')
+                              + cm.nogroup.v1.certificate.spec.issuerRef.withName($._config.issuerName)
+                              + cm.nogroup.v1.certificate.spec.issuerRef.withKind($._config.issuerKind)
                               + cm.nogroup.v1.certificate.spec.issuerRef.withGroup('cert-manager.io'),
   telestoDBRole: cnpg.postgresql.v1.databaseRole.new('role-telesto')
                  + cnpg.postgresql.v1.databaseRole.metadata.withNamespace($._config._global.namespace)

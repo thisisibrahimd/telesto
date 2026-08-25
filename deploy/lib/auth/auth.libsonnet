@@ -5,10 +5,17 @@ local identitySchema = importstr './identity.schema.json';
 local k = import 'github.com/grafana/jsonnet-libs/ksonnet-util/kausal.libsonnet';
 
 local helmutil = import '../../lib/util/helm.libsonnet';
+
 local dnsutil = import '../../lib/util/dns.libsonnet';
 
 local cm = import 'github.com/jsonnet-libs/cert-manager-libsonnet/1.19/main.libsonnet';
+local certificate = cm.nogroup.v1.certificate
 local cnpg = import '../cloudnative-pg-crds/1.30.0/main.libsonnet';
+
+local sgw = import '../util/simple_gateway.libsonnet';
+local secureGateway = import '../util/secure_gateway.libsonnet';
+
+local certs = import '../util/certs.libsonnet';
 
 {
   _config:: {
@@ -25,41 +32,49 @@ local cnpg = import '../cloudnative-pg-crds/1.30.0/main.libsonnet';
   },
 
   // database for auth components
-  secretCertDBAuthServer: k.core.v1.secret.new('cert-db-auth-server', {}, 'kubernetes.io/tls')
-                              + k.core.v1.secret.metadata.withNamespace($._config._global.namespace)
-                              + k.core.v1.secret.metadata.withLabelsMixin({ 'cnpg.io/reload': '' }),
+  certDBCluster: certs.server.new(
+    name='kratos-public',
+    namespace=$._config._global.namespace,
+    commonName='auth.telesto.test',
+    issuerName=$._config.clusterIssuerRefName
+  ),
+  certDBClient: certs.server.new(
+    name='kratos-public',
+    namespace=$._config._global.namespace,
+    commonName='auth.telesto.test',
+    issuerName=$._config.clusterIssuerRefName
+  ),
   certDBAuthServer: cm.nogroup.v1.certificate.new('db-auth-server')
-                       + cm.nogroup.v1.certificate.metadata.withNamespace($._config._global.namespace)
-                       + cm.nogroup.v1.certificate.spec.withIsCA(true)
-                       + cm.nogroup.v1.certificate.spec.withCommonName('db-auth-server')
-                       + cm.nogroup.v1.certificate.spec.withSecretName('cert-db-auth-server')
-                       + cm.nogroup.v1.certificate.spec.withUsages(['server auth'])
-                       + cm.nogroup.v1.certificate.spec.withDnsNames(
-                         dnsutil.dnsnames.cnpg.new('auth-db-cluster', 'auth')
-                       )
-                       + cm.nogroup.v1.certificate.spec.privateKey.withAlgorithm('ECDSA')
-                       + cm.nogroup.v1.certificate.spec.privateKey.withSize(256)
-                       + cm.nogroup.v1.certificate.spec.issuerRef.withName($._config.clusterIssuerRefName)
-                       + cm.nogroup.v1.certificate.spec.issuerRef.withKind('ClusterIssuer')
-                       + cm.nogroup.v1.certificate.spec.issuerRef.withGroup('cert-manager.io'),
+                    + cm.nogroup.v1.certificate.metadata.withNamespace($._config._global.namespace)
+                    + cm.nogroup.v1.certificate.spec.withIsCA(true)
+                    + cm.nogroup.v1.certificate.spec.withCommonName('db-auth-server')
+                    + cm.nogroup.v1.certificate.spec.withSecretName('cert-db-auth-server')
+                    + cm.nogroup.v1.certificate.spec.secretTemplate.withLabels({ 'cnpg.io/reload': '' })
+                    + cm.nogroup.v1.certificate.spec.withUsages(['server auth'])
+                    + cm.nogroup.v1.certificate.spec.withDnsNames(
+                      dnsutil.dnsnames.cnpg.new('auth-db-cluster', 'auth')
+                    )
+                    + cm.nogroup.v1.certificate.spec.privateKey.withAlgorithm('ECDSA')
+                    + cm.nogroup.v1.certificate.spec.privateKey.withSize(256)
+                    + cm.nogroup.v1.certificate.spec.issuerRef.withName($._config.clusterIssuerRefName)
+                    + cm.nogroup.v1.certificate.spec.issuerRef.withKind('ClusterIssuer')
+                    + cm.nogroup.v1.certificate.spec.issuerRef.withGroup('cert-manager.io'),
   issuerDBAuthServer: cm.nogroup.v1.issuer.new('issuer-db-auth-server')
-                         + cm.nogroup.v1.issuer.metadata.withNamespace($._config._global.namespace)
-                         + cm.nogroup.v1.issuer.spec.ca.withSecretName('cert-db-auth-server'),
-  secretCertDBAuthClient: k.core.v1.secret.new('cert-db-auth-client', {}, 'kubernetes.io/tls')
-                              + k.core.v1.secret.metadata.withNamespace($._config._global.namespace)
-                              + k.core.v1.secret.metadata.withLabelsMixin({ 'cnpg.io/reload': '' }),
+                      + cm.nogroup.v1.issuer.metadata.withNamespace($._config._global.namespace)
+                      + cm.nogroup.v1.issuer.spec.ca.withSecretName('cert-db-auth-server'),
   certDBAuthClient: cm.nogroup.v1.certificate.new('db-auth-client')
-                       + cm.nogroup.v1.certificate.metadata.withNamespace($._config._global.namespace)
-                       + cm.nogroup.v1.certificate.spec.withIsCA(true)
-                       + cm.nogroup.v1.certificate.spec.withCommonName('streaming-replica')
-                       + cm.nogroup.v1.certificate.spec.withSecretName('cert-db-auth-client')
-                       + cm.nogroup.v1.certificate.spec.withUsages(['client auth'])
-                       + cm.nogroup.v1.certificate.spec.issuerRef.withName($._config.clusterIssuerRefName)
-                       + cm.nogroup.v1.certificate.spec.issuerRef.withKind('ClusterIssuer')
-                       + cm.nogroup.v1.certificate.spec.issuerRef.withGroup('cert-manager.io'),
+                    + cm.nogroup.v1.certificate.metadata.withNamespace($._config._global.namespace)
+                    + cm.nogroup.v1.certificate.spec.withIsCA(true)
+                    + cm.nogroup.v1.certificate.spec.withCommonName('streaming-replica')
+                    + cm.nogroup.v1.certificate.spec.withSecretName('cert-db-auth-client')
+                    + cm.nogroup.v1.certificate.spec.secretTemplate.withLabels({ 'cnpg.io/reload': '' })
+                    + cm.nogroup.v1.certificate.spec.withUsages(['client auth'])
+                    + cm.nogroup.v1.certificate.spec.issuerRef.withName($._config.clusterIssuerRefName)
+                    + cm.nogroup.v1.certificate.spec.issuerRef.withKind('ClusterIssuer')
+                    + cm.nogroup.v1.certificate.spec.issuerRef.withGroup('cert-manager.io'),
   issuerDBAuthClient: cm.nogroup.v1.issuer.new('issuer-db-auth-client')
-                         + cm.nogroup.v1.issuer.metadata.withNamespace($._config._global.namespace)
-                         + cm.nogroup.v1.issuer.spec.ca.withSecretName('cert-db-auth-client'),
+                      + cm.nogroup.v1.issuer.metadata.withNamespace($._config._global.namespace)
+                      + cm.nogroup.v1.issuer.spec.ca.withSecretName('cert-db-auth-client'),
   // TODO: libsonnetify helm values
   auth_db_cluster: helm.template('auth-db', '../../charts/cluster', {
     namespace: $._config._global.namespace,
@@ -121,27 +136,107 @@ local cnpg = import '../cloudnative-pg-crds/1.30.0/main.libsonnet';
             + cnpg.postgresql.v1.database.spec.withOwner('kratos')
             + cnpg.postgresql.v1.database.spec.withDatabaseReclaimPolicy('delete'),
   // kratos svc
+  certKratosPublic: certs.server.new(
+    name='kratos-public',
+    namespace=$._config._global.namespace,
+    commonName=$._config.domain,
+    issuerName=$._config.clusterIssuerRefName
+  ),
+  certKratosAdmin: certs.server.new(
+    name='kratos-admin',
+    namespace=$._config._global.namespace,
+    commonName='auth-kratos-admin.auth',
+    issuerName=$._config.clusterIssuerRefName
+  ),
   kratos: helmutil.stripHelmHooks(helm.template('auth', '../../charts/kratos', {
     namespace: $._config._global.namespace,
     values: {
       deployment: {
-        extraVolumes: [{
-          name: 'db-client-cert',
-          secret: {
-            secretName: 'cert-db-auth-kratos-client',
-          },
-        }],
-        extraVolumeMounts: [{
-          name: 'db-client-cert',
-          mountPath: '/etc/secrets/db',
-          readOnly: true,
-        }],
-        extraEnv: [
+        customStartupProbe: {
+          failureThreshold: 5,
+          initialDelaySeconds: 1,
+          periodSeconds: 1,
+          successThreshold: 1,
+          timeoutSeconds: 2,
+          httpGet:
+            {
+              httpHeaders:
+                [
+                  {
+                    name: 'Host',
+                    value: '127.0.0.1',
+                  },
+                ],
+              path: '/admin/health/ready',
+              port: 4434,
+              scheme: 'HTTPS',
+            },
+        },
+        customReadinessProbe: {
+          failureThreshold: 5,
+          periodSeconds: 10,
+          initialDelaySeconds: 5,
+          httpGet:
+            {
+              httpHeaders:
+                [
+                  {
+                    name: 'Host',
+                    value: '127.0.0.1',
+                  },
+                ],
+              path: '/admin/health/alive',
+              port: 4434,
+              scheme: 'HTTPS',
+            },
+        },
+        extraVolumes: [
           {
-            name: 'LOG_LEAK_SENSITIVE_VALUES',
-            value: 'false',
+            name: 'db-client-cert',
+            secret: {
+              secretName: 'cert-db-auth-kratos-client',
+            },
+          },
+          {
+            name: 'kratos-public-cert',
+            secret: {
+              secretName: 'cert-kratos-public',
+            },
+          },
+          {
+            name: 'kratos-admin-cert',
+            secret: {
+              secretName: 'cert-kratos-admin',
+            },
           },
         ],
+        extraVolumeMounts: [
+          {
+            name: 'db-client-cert',
+            mountPath: '/etc/secrets/db',
+            readOnly: true,
+          },
+          {
+            name: 'kratos-public-cert',
+            mountPath: '/etc/certs/public',
+            readOnly: true,
+          },
+          {
+            name: 'kratos-admin-cert',
+            mountPath: '/etc/certs/admin',
+            readOnly: true,
+          },
+        ],
+      },
+      service: {
+        admin: {
+          name: 'https',
+          port: 443,
+        },
+        public: {
+          name: 'https',
+          port: 443,
+        },
       },
       kratos: {
         automigration: {
@@ -149,6 +244,9 @@ local cnpg = import '../cloudnative-pg-crds/1.30.0/main.libsonnet';
           type: 'job',
         },
         config: {
+          log: {
+            leak_sensitive_values: true,
+          },
           dsn: 'postgres://kratos@auth-db-cluster-rw.auth:5432/kratos?sslmode=verify-full&sslrootcert=/etc/secrets/db/ca.crt&sslcert=/etc/secrets/db/tls.crt&sslkey=/etc/secrets/db/tls.key&max_conns=4&max_idle_conns=2',
           cookies: {
             domain: 'telesto.test',
@@ -164,7 +262,15 @@ local cnpg = import '../cloudnative-pg-crds/1.30.0/main.libsonnet';
           },
           serve: {
             admin: {
-              base_url: 'https://admin.auth.telesto.test',
+              base_url: 'https://auth-kratos-admin.auth',
+              tls: {
+                key: {
+                  path: '/etc/certs/admin/tls.key',
+                },
+                cert: {
+                  path: '/etc/certs/admin/tls.crt',
+                },
+              },
             },
             public: {
               base_url: 'https://auth.telesto.test',
@@ -173,6 +279,7 @@ local cnpg = import '../cloudnative-pg-crds/1.30.0/main.libsonnet';
                 enabled: true,
                 allowed_origins: [
                   'https://app.telesto.test',
+                  'https://telesto-private.app',
                 ],
                 allowed_methods: [
                   'POST',
@@ -191,6 +298,14 @@ local cnpg = import '../cloudnative-pg-crds/1.30.0/main.libsonnet';
                   'Set-Cookie',
                 ],
                 allow_credentials: true,
+              },
+              tls: {
+                key: {
+                  path: '/etc/certs/public/tls.key',
+                },
+                cert: {
+                  path: '/etc/certs/public/tls.crt',
+                },
               },
             },
           },
@@ -250,43 +365,17 @@ local cnpg = import '../cloudnative-pg-crds/1.30.0/main.libsonnet';
       },
     },
   }), 120),
-  gatewayKratosPublic: (import '../util/simple_gateway.libsonnet') + {
-    _config+:: {
-      _global: {
-        namespace: $._config._global.namespace,
-      },
-      name: 'kratos-public',
-      hostname: 'auth.telesto.test',
-      gatewayClassName: 'nginx',
-      issuerRef: {
-        name: 'cluster-issuer-central',
-        kind: 'ClusterIssuer',
-      },
-      svc: {
-        name: 'auth-kratos-public',
-        port: 80,
-      },
-    },
-  },
-  gatewayKratosAdmin: (import '../util/simple_gateway.libsonnet') + {
-    _config+:: {
-      _global: {
-        namespace: $._config._global.namespace,
-      },
-      name: 'kratos-admin',
-      hostname: 'admin.auth.telesto.test',
-      gatewayClassName: 'nginx',
-      issuerRef: {
-        name: 'cluster-issuer-central',
-        kind: 'ClusterIssuer',
-      },
-      svc: {
-        name: 'auth-kratos-admin',
-        port: 80,
-      },
-    },
-  },
-
+  gatewayKratosPublic: secureGateway.new(
+    name='kratos-public',
+    namespace=$._config._global.namespace,
+    hostname='auth.telesto.test',
+    gatewayClassName='nginx',
+    issuerName='cluster-issuer-central',
+    issuerKind='ClusterIssuer',
+    serviceName='auth-kratos-public',
+    servicePort=443,
+    caCertConfigMapName='bundle-telesto'
+  ),
 
   // dex db
   cert_db_auth_dex_client: cm.nogroup.v1.certificate.new('db-auth-dex-client')
@@ -407,22 +496,13 @@ local cnpg = import '../cloudnative-pg-crds/1.30.0/main.libsonnet';
       },
     },
   }),
-  gatewayDex: (import '../util/simple_gateway.libsonnet') + {
-    _config+:: {
-      _global: {
-        namespace: $._config._global.namespace,
-      },
-      name: 'dex',
-      hostname: 'dex.telesto.test',
-      gatewayClassName: 'nginx',
-      issuerRef: {
-        name: 'cluster-issuer-central',
-        kind: 'ClusterIssuer',
-      },
-      svc: {
-        name: 'dex',
-        port: 5556,
-      },
-    },
-  },
+  gatewayDex: sgw.new(
+    name='dex',
+    namespace=$._config._global.namespace,
+    hostname='dex.telesto.test',
+    gatewayClassName='nginx',
+    issuerName='cluster-issuer-central',
+    serviceName='dex',
+    servicePort=5556
+  ),
 }

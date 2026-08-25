@@ -34,14 +34,11 @@ func (h *LoadSessionMiddleware) Handler(next http.Handler) http.Handler {
 }
 
 func validateSession(oClient *ory.APIClient, r *http.Request) (*ory.Session, error) {
-	cookie, err := r.Cookie("ory_kratos_session")
-	if err != nil {
-		return nil, err
-	}
-	if cookie == nil {
+	cookie := r.Header.Get("Cookie")
+	if cookie == "" {
 		return nil, ErrNoSessionFound
 	}
-	resp, _, err := oClient.FrontendAPI.ToSession(context.Background()).Cookie(cookie.String()).Execute()
+	resp, _, err := oClient.FrontendAPI.ToSession(context.Background()).Cookie(cookie).Execute()
 	if err != nil {
 		return nil, err
 	}

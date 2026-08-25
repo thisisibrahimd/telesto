@@ -11,6 +11,17 @@ LOAD_CONTAINER_IMAGE?=true
 # 	kubectl apply -f https://raw.githubusercontent.com/aquasecurity/kube-bench/refs/tags/v0.15.6/job.yaml
 # 	PODNAME=$$(kubectl get po -l job-name=kube-bench -o json | jq '.items[0].metadata.name' -r); kubectl logs $$PODNAME
 
+.PHONY: jb-update
+jb-update:
+	cd deploy/ && jb update
+
+.PHONY: charts-vendor
+charts-vendor:
+	cd deploy/ && tk tool charts vendor
+
+.PHONY: install-tk-deps
+install-tk-deps: jb-update charts-vendor
+	
 TANKA_ENVIRONMENT_PATH=deploy/environments/local
 TANKA_ENVIRONMENT_NAME=$(notdir $(TANKA_ENVIRONMENT_PATH))
 TANKA_EXT_FLAGS = \
@@ -140,6 +151,11 @@ gen-query:
 	find internal/storage/query -type f -name '*gen.go' -delete
 	go generate ./internal/storage/query/...
 
+.PHONY: gen-cfg-jsonschema
+gen-cfg-jsonschema:
+	go generate ./internal/config/...
+	
+
 # sops
 .PHONY: sops
 sops:
@@ -153,4 +169,7 @@ install-local-root-ca-macos:
 	mkdir -p tmp
 	kubectl get secrets -n cert-manager cert-root-ca-telesto -o json | jq -r '.data.["tls.crt"]' | base64 -d > ./tmp/ca.crt
 	sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ./tmp/ca.crt
-	
+
+.PHONY: gen-token
+gen-token:
+	openssl rand -hex 32

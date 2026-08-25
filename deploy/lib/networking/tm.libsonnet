@@ -21,5 +21,12 @@ local bundle = tm.trust.v1alpha1.bundle;
                    bundle.spec.sources.secret.withName($._config.rootCASecretName)
                    + bundle.spec.sources.secret.withKey('tls.crt'),
                  ])
-                 + bundle.spec.target.configMap.withKey('bundle.pem'),
+                 + bundle.spec.target.configMap.withKey('ca.crt'),
+  telestoRootCA: bundle.new('bundle-telesto-root-ca')
+                 + bundle.spec.withSources([
+                   bundle.spec.sources.withUseDefaultCAs(false),
+                   bundle.spec.sources.secret.withName($._config.rootCASecretName)
+                   + bundle.spec.sources.secret.withKey('tls.crt'),
+                 ])
+                 + bundle.spec.target.configMap.withKey('ca.crt'),
 }

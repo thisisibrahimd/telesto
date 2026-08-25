@@ -3,6 +3,10 @@ local helm = tanka.helm.new(std.thisFile);
 
 local argo = import '../argocd-crds/3.4.1/main.libsonnet';
 local project = argo.argoproj.v1alpha1.appProject;
+
+local sgw = import '../util/simple_gateway.libsonnet';
+
+local certs = import '../util/certs.libsonnet';
 {
   _config:: {
     _global: {
@@ -19,6 +23,12 @@ local project = argo.argoproj.v1alpha1.appProject;
 
   },
 
+  cert: certs.server.new(
+    name='argocd',
+    namespace=$._config._global.namespace,
+    commonName=$._config.domain,
+    issuerName=$._config.clusterIssuerRefName
+  ),
   // TODO: libsonnetify helm values
   argocd: helm.template('customer-captain', '../../charts/argo-cd', {
     namespace: $._config._global.namespace,
@@ -29,7 +39,6 @@ local project = argo.argoproj.v1alpha1.appProject;
         },
         domain: $._config.domain,
       },
-      controller: {},
       applicationSet: {
         allowAnyNamespace: true,
       },
@@ -77,22 +86,13 @@ local project = argo.argoproj.v1alpha1.appProject;
                         project.spec.namespaceResourceBlacklist.withKind('*')
                         + project.spec.namespaceResourceBlacklist.withGroup('*')
                       ),
-  gateway: (import '../util/simple_gateway.libsonnet') + {
-    _config+:: {
-      _global: {
-        namespace: $._config._global.namespace,
-      },
-      name: 'argocd',
-      hostname: $._config.domain,
-      gatewayClassName: $._config.gatewayClassName,
-      issuerRef: {
-        name: $._config.clusterIssuerRefName,
-        kind: 'ClusterIssuer',
-      },
-      svc: {
-        name: 'customer-captain-argocd-server',
-        port: 443,
-      },
-    },
-  },
+  gateway: sgw.new(
+    name="argocd",
+    namespace=$._config._global.namespace,
+    hostname=$._config.domain,
+    gatewayClassName='nginx',
+    issuerName='cluster-issuer-central',
+    serviceName='customer-captain-argocd-server',
+    servicePort=443
+  ),
 }

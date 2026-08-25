@@ -1,5 +1,11 @@
-.terraform/
+# hide jsonnet-bundler vendor files 
 vendor
+
+# hide tanka synced helm charts
 charts
 
+# hide generated templ go files
 *_templ.go
+
+# hide generated or localized crds
+**/*crds/**

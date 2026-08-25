@@ -1,16 +1,15 @@
 package cli
 
 import (
-	"errors"
-	"log/slog"
-	"strings"
+	"sync"
 
-	"github.com/mdobak/go-xerrors"
-	ory "github.com/ory/kratos-client-go/v26"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/thisisibrahimd/telesto/internal/config"
 	"github.com/thisisibrahimd/telesto/internal/server"
+	"github.com/thisisibrahimd/telesto/internal/server/private"
+	"github.com/thisisibrahimd/telesto/internal/server/public"
+	"github.com/thisisibrahimd/telesto/internal/server/services"
 	"github.com/thisisibrahimd/telesto/internal/storage"
 	"github.com/thisisibrahimd/telesto/internal/telemetry"
 )
@@ -18,35 +17,20 @@ import (
 func NewServeCommand() *cobra.Command {
 	var serveCfgFile string
 	serveViperCfg := viper.New()
-	var serveCfg *config.ServeConfig
+	serveCfg := config.NewServeConfig()
 
 	cmd := &cobra.Command{
 		Use: "serve",
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			// logging
-			l := telemetry.NewLogger()
+			// l := telemetry.NewLogger()
 
-			serveViperCfg.SetEnvPrefix("tl")
-			serveViperCfg.SetEnvKeyReplacer(strings.NewReplacer(".", "*", "-", "*"))
-			serveViperCfg.AllowEmptyEnv(true)
-
-			// handle the configuration file
-			if serveCfgFile != "" {
-				serveViperCfg.SetConfigFile(serveCfgFile)
-			} else {
-				serveViperCfg.AddConfigPath(".")
-				serveViperCfg.SetConfigName("telesto")
-				serveViperCfg.SetConfigType("json")
+			if err := loadViperConfig(serveViperCfg, true, serveCfg, serveCfgFile); err != nil {
+				return err
 			}
 
-			// read the config file
-			if err := serveViperCfg.ReadInConfig(); err != nil {
-				var configFileNotFoundError viper.ConfigFileNotFoundError
-				if !errors.As(err, &configFileNotFoundError) {
-					return err
-				}
-			}
-			if err := serveViperCfg.Unmarshal(&serveCfg); err != nil {
+			// validate the config
+			if err := config.Validate(serveCfg); err != nil {
 				return err
 			}
 
@@ -56,75 +40,36 @@ func NewServeCommand() *cobra.Command {
 				return err
 			}
 
-			l.Info("config initialized", "config", serveViperCfg.ConfigFileUsed())
+			// l.Info("config initialized", "config", serveViperCfg.ConfigFileUsed())
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// logging
-			l := telemetry.NewLogger()
+			l := telemetry.NewLogger(serveCfg.Telemetry.Log)
 
 			// storage
-			stoCfg := storage.DefaultConfig()
-			stoCfg.Migrate = serveCfg.Storage.Migrate
-			stoCfg.DSN = serveCfg.Storage.DSN
-			stoCfg.Type = storage.DB_TYPE_POSTGRES
-			sto, err := storage.NewStorage(stoCfg)
-			if err != nil {
-				return xerrors.New("failed to create storage", err)
-			}
+			sto := storage.NewStorage(&serveCfg.Storage, storage.NewLogger(l), storage.NewGormLogger(l))
 
-			// auth
-			oryCfg := &ory.Configuration{
-				UserAgent: "teleesto-server",
-				Servers: ory.ServerConfigurations{
-					{
-						URL:         serveCfg.Auth.Kratos.InternalEndpoint,
-						Description: "kratos public endpoint",
-					},
-				},
-			}
-			oryClient := ory.NewAPIClient(oryCfg)
+			// init servies
+			svcs := services.NewServices(sto)
 
-			// session keys
-			// srvKeyStore := &server.KeyStore{
-			// 	CookieStoreKey:  []byte{},
-			// 	CookieEncKey:    []byte{},
-			// 	SessionStoreKey: []byte{},
-			// 	SessionEncKey:   []byte{},
-			// 	CsrfKey:         []byte{},
-			// }
+			// create servers
+			pus := public.NewServer(&serveCfg.Server.Public, svcs, server.NewLogger(l, "public"))
+			prs := private.NewServer(&serveCfg.Server.Private, svcs, server.NewLogger(l, "private"))
 
-			// server
-			srvCfg := &server.Config{
-				Address: serveCfg.Server.Address,
-				Logger:  server.NewServerLogger(l),
-				// KeyStore:        srvKeyStore,
-				Storage:              sto,
-				OryKratosClient:      oryClient,
-				KratosPublicEndpoint: serveCfg.Auth.Kratos.PublicEndpoint,
-				TelestoDeployer:      serveCfg.Server.TelestoDeployer,
-				ExternalSecrets:      serveCfg.Server.ExternalSecrets,
-			}
-			srv, err := server.NewServer(srvCfg)
-			if err != nil {
-				return xerrors.New("failed to create server", err)
-			}
+			// run servers
+			var wg sync.WaitGroup
 
-			slog.Info("starting server")
-			if serveCfg.Server.Cert != "" && serveCfg.Server.Key != "" {
-				if err := srv.ListenAndServeTLS(serveCfg.Server.Cert, serveCfg.Server.Key); err != nil {
-					slog.Error("failed to serve tls server", slog.Any("error", err))
-				}
-			} else {
-				if err := srv.ListenAndServe(); err != nil {
-					slog.Error("failed to serve server", slog.Any("error", err))
-				}
-			}
+			wg.Add(2)
+			go pus.Serve()
+			go prs.Serve()
+			wg.Wait()
+
 			return nil
 		},
 	}
 
-	cmd.Flags().StringVar(&serveCfgFile, "config", "./telesto.json", "config file")
+	cmd.Flags().StringVar(&serveCfgFile, "config", DEFAULT_CONFIG_FILE, "config file")
 
 	return cmd
 }

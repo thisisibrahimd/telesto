@@ -15,14 +15,9 @@ type Repo[T any] interface {
 }
 
 type RepoByUser[T any] interface {
-	Repo[T]
 	ByUser(id string) Repo[T]
 }
+
 type RepoByTelesto[T any] interface {
-	Repo[T]
 	ByTelesto(id string) Repo[T]
-}
-type RepoByUserAndTelesto[T any] interface {
-	RepoByUser[T]
-	RepoByTelesto[T]
 }

@@ -10,7 +10,9 @@ import (
 )
 
 var telestoCmd = &cobra.Command{
-	Use: "telesto",
+	Use:           "telesto",
+	SilenceErrors: true,
+	SilenceUsage:  true,
 }
 
 func main() {
@@ -18,6 +20,7 @@ func main() {
 
 	// register commands
 	telestoCmd.AddCommand(cli.NewServeCommand())
+	telestoCmd.AddCommand(cli.NewConfigCommand())
 
 	// launch command
 	if err := telestoCmd.ExecuteContext(ctx); err != nil {
