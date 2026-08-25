@@ -2,6 +2,8 @@
 
 Telesto is an Opentelemetry Collector as a Service providing users an oppurtunity to test out cloud telemetry storage options without commiting time to their less than standardized instrumentation. 
 
+Telesto and documentation is in active development!!!
+
 
 ## Architecture
 
@@ -89,3 +91,13 @@ The cluster and all the tools needed to deploy are ready. All services will be a
 ```bash
 make tk-apply tk-prune
 ```
+
+5. open telesto
+
+Open up the following url.
+
+https://app.telesto.test
+
+And create a user account, telesto instance with a token and following instructions to export telemetry to your instance.
+
+<wip>
