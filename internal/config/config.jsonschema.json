@@ -32,7 +32,7 @@
         "cookieStoreKey": {
           "type": "string"
         },
-        "cookieEnvKey": {
+        "cookieEncKey": {
           "type": "string"
         },
         "sessionStoreKey": {
@@ -46,7 +46,7 @@
       "type": "object",
       "required": [
         "cookieStoreKey",
-        "cookieEnvKey",
+        "cookieEncKey",
         "sessionStoreKey",
         "sessionEncKey"
       ]
@@ -63,7 +63,39 @@
         "token"
       ]
     },
-    "InternalServer": {
+    "Kratos": {
+      "properties": {
+        "internalEndpoint": {
+          "type": "string"
+        },
+        "publicEndpoint": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "internalEndpoint",
+        "publicEndpoint"
+      ]
+    },
+    "LoggingConfig": {
+      "properties": {
+        "debug": {
+          "type": "boolean"
+        },
+        "format": {
+          "type": "string",
+          "enum": [
+            "text",
+            "json"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "PrivateServerConfig": {
       "properties": {
         "address": {
           "type": "string"
@@ -86,23 +118,7 @@
         "externalSecrets"
       ]
     },
-    "Kratos": {
-      "properties": {
-        "internalEndpoint": {
-          "type": "string"
-        },
-        "publicEndpoint": {
-          "type": "string"
-        }
-      },
-      "additionalProperties": false,
-      "type": "object",
-      "required": [
-        "internalEndpoint",
-        "publicEndpoint"
-      ]
-    },
-    "PublicServer": {
+    "PublicServerConfig": {
       "properties": {
         "address": {
           "type": "string"
@@ -118,6 +134,9 @@
         },
         "auth": {
           "$ref": "#/$defs/Auth"
+        },
+        "baseUrl": {
+          "type": "string"
         }
       },
       "additionalProperties": false,
@@ -126,45 +145,47 @@
         "address",
         "cookies",
         "csrf",
-        "auth"
+        "auth",
+        "baseUrl"
       ]
     },
     "ServeConfig": {
       "properties": {
         "storage": {
-          "$ref": "#/$defs/Storage"
+          "$ref": "#/$defs/StorageConfig"
         },
         "server": {
-          "$ref": "#/$defs/Server"
+          "$ref": "#/$defs/ServerConfig"
         },
-        "debug": {
-          "type": "boolean"
+        "telemetry": {
+          "$ref": "#/$defs/TelemetryConfig"
         }
       },
       "additionalProperties": false,
       "type": "object",
       "required": [
         "storage",
-        "server"
+        "server",
+        "telemetry"
       ]
     },
-    "Server": {
+    "ServerConfig": {
       "properties": {
         "public": {
-          "$ref": "#/$defs/PublicServer"
+          "$ref": "#/$defs/PublicServerConfig"
         },
-        "internal": {
-          "$ref": "#/$defs/InternalServer"
+        "private": {
+          "$ref": "#/$defs/PrivateServerConfig"
         }
       },
       "additionalProperties": false,
       "type": "object",
       "required": [
         "public",
-        "internal"
+        "private"
       ]
     },
-    "Storage": {
+    "StorageConfig": {
       "properties": {
         "dsn": {
           "type": "string"
@@ -181,11 +202,23 @@
     },
     "TLS": {
       "properties": {
+        "caCert": {
+          "type": "string"
+        },
         "cert": {
           "type": "string"
         },
         "key": {
           "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "TelemetryConfig": {
+      "properties": {
+        "log": {
+          "$ref": "#/$defs/LoggingConfig"
         }
       },
       "additionalProperties": false,

@@ -4,10 +4,10 @@ import (
 	"github.com/thisisibrahimd/telesto/internal/telemetry"
 )
 
-type StorageLogger struct {
+type Logger struct {
 	*telemetry.Logger
 }
 
-func NewStorageLogger(l *telemetry.Logger) *StorageLogger {
-	return &StorageLogger{l}
+func NewLogger(l *telemetry.Logger) *Logger {
+	return &Logger{l.NewSubLogger("storage")}
 }
