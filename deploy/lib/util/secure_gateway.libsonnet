@@ -1,7 +1,6 @@
 local gw = import './gateway.libsonnet';
-
 {
-  new(name, namespace, hostname, gatewayClassName, issuerName, issuerKind='ClusterIssuer', serviceName, servicePort): {
+  new(name, namespace, hostname, gatewayClassName, issuerName, issuerKind='ClusterIssuer', serviceName, servicePort, caCertConfigMapName): {
     gateway: gw.gateway.new(
                name=name,
                namespace=namespace,
@@ -22,6 +21,13 @@ local gw = import './gateway.libsonnet';
       namespace=namespace,
       hostname=hostname,
       parentName=gw.gateway.gatewayName(name),
+    ),
+    backendTLSPolicy: gw.backendTLSPolicy.new(
+      name=name,
+      namespace=namespace,
+      hostname=hostname,
+      serviceName=serviceName,
+      configMapName=caCertConfigMapName,
     ),
   },
 }
