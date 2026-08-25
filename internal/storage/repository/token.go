@@ -9,16 +9,16 @@ import (
 	"gorm.io/gorm"
 )
 
-type TokenRepo struct {
+type ITokenRepo interface {
+	Repo[model.Token]
 	RepoByUser[model.Token]
 	RepoByTelesto[model.Token]
-	db *gorm.DB
+	MarkSeen(ctx context.Context, id string) (gen.ResultInfo, error)
 }
 
-var (
-	_ RepoByTelesto[model.Token] = (*TokenRepo)(nil)
-	_ RepoByUser[model.Token]    = (*TokenRepo)(nil)
-)
+type TokenRepo struct {
+	db *gorm.DB
+}
 
 func (r *TokenRepo) query() *query.Query {
 	return query.Use(r.db)
@@ -57,19 +57,18 @@ func (r *TokenRepo) New(ctx context.Context, otelcol *model.Token) error {
 		Create(otelcol)
 }
 
-func (r *TokenRepo) Edit(ctx context.Context, id string, otelcol *model.Token) (gen.ResultInfo, error) {
+func (r *TokenRepo) Edit(ctx context.Context, id string, token *model.Token) (gen.ResultInfo, error) {
 	return r.query().
 		Token.WithContext(ctx).
 		Where(r.query().Token.ID.Eq(id)).
-		Preload(r.query().Token.Telesto).
-		Updates(otelcol)
+		Updates(token)
 }
 
-func (r *TokenRepo) MarkTokenSeen(ctx context.Context, id string) (gen.ResultInfo, error) {
+func (r *TokenRepo) MarkSeen(ctx context.Context, id string) (gen.ResultInfo, error) {
 	return r.query().
 		Token.WithContext(ctx).
 		Where(r.query().Token.ID.Eq(id)).
-		UpdateColumn(r.query().Token.Seen, true)
+		Update(r.query().Token.Seen, true)
 }
 
 func (r *TokenRepo) Delete(ctx context.Context, id string) (gen.ResultInfo, error) {
@@ -79,6 +78,6 @@ func (r *TokenRepo) Delete(ctx context.Context, id string) (gen.ResultInfo, erro
 		Delete()
 }
 
-func NewTokenRepo(db *gorm.DB) RepoByUserAndTelesto[model.Token] {
+func NewTokenRepo(db *gorm.DB) ITokenRepo {
 	return &TokenRepo{db: db}
 }

@@ -9,11 +9,14 @@ import (
 	"gorm.io/gorm"
 )
 
+type ITelestoRepo interface {
+	Repo[model.Telesto]
+	RepoByUser[model.Telesto]
+}
+
 type TelestoRepo struct {
 	db *gorm.DB
 }
-
-var _ RepoByUser[model.Telesto] = (*TelestoRepo)(nil)
 
 func (r *TelestoRepo) query() *query.Query {
 	return query.Use(r.db)
@@ -62,6 +65,6 @@ func (r *TelestoRepo) Delete(ctx context.Context, id string) (gen.ResultInfo, er
 		Delete()
 }
 
-func NewTelestoRepo(db *gorm.DB) RepoByUser[model.Telesto] {
+func NewTelestoRepo(db *gorm.DB) ITelestoRepo {
 	return &TelestoRepo{db: db}
 }
