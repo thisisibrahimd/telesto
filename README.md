@@ -29,12 +29,12 @@ Diagram:
 
 | Folder | Purpose |
 |------|------|
-| secrets | sops encrypted secrets for each kubernetes environment (local, dev, prod) deployed by tanka. You will find tanka.json in each environment folder |
-| cmd | main entrypoint for each go binary. telesto-server and telestoctl (telestoctl is wip) |
-| deploy | deployment scripts for creation of kubernetes clusters, deployment of kubernetes manifests through tanka with jsonnet |
-| templates | templ templates files for rendering html from telesto server |
-| static | static asset files for UI |
-| internal | go packages for telesto-server and telestoctl
+| secrets/ | sops encrypted secrets for each kubernetes environment (local, dev, prod) deployed by tanka. You will find tanka.json in each environment folder |
+| cmd/ | main entrypoint for each go binary. telesto-server and telestoctl (telestoctl is wip) |
+| deploy/ | deployment scripts for creation of kubernetes clusters, deployment of kubernetes manifests through tanka with jsonnet |
+| templates/ | templ templates files for rendering html from telesto server |
+| static/ | static asset files for UI |
+| internal/ | go packages for telesto-server and telestoctl
 
 ### Prerequisties
 
