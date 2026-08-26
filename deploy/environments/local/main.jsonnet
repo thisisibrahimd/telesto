@@ -49,6 +49,7 @@ local secrets = std.parseJson(secretsJson);
   // argocd installation
   argocd: (import '../../lib/argocd/argocd.libsonnet') + {
     _config+:: {
+      issuerRefName: $.ca._config.clusterIssuerName,
       oidcClientSecret: secrets.dex.clients.argocd.secret,
     },
   },
@@ -56,6 +57,7 @@ local secrets = std.parseJson(secretsJson);
   // auth solution
   auth: (import '../../lib/auth/auth.libsonnet') + {
     _config+:: {
+      issuerRefName: $.ca._config.clusterIssuerName,
       argocdClientSecret: secrets.dex.clients.argocd.secret,
       githubClientID: secrets.dex.connectors.github.clientID,
       githubClientSecret: secrets.dex.connectors.github.clientSecret,
@@ -68,7 +70,7 @@ local secrets = std.parseJson(secretsJson);
       _global: {
         namespace: 'app',
       },
-      issuerName: $.ca._config.clusterIssuerName,
+      issuerRefName: $.ca._config.clusterIssuerName,
       telesto+: {
         config+: tc.server.public.cookies.withCookieEncKey(secrets.server.public.cookies.cookieEncKey)
                 + tc.server.public.cookies.withCookieStoreKey(secrets.server.public.cookies.cookieStoreKey)
@@ -87,8 +89,8 @@ local secrets = std.parseJson(secretsJson);
   // telesto deployer
   telestodeployer: (import '../../lib/telestodeployer/telestodeployer.libsonnet') + {
     _config+:: {
-      clusterIssuerRefName: $.ca._config.clusterIssuerName,
 
+      issuerRefName: $.ca._config.clusterIssuerName,
       telestoDeployerToken: secrets.server.private.telestoDeployer.token,
     },
   },

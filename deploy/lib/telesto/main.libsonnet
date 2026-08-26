@@ -34,9 +34,8 @@ local service = k.core.v1.service;
     _global: {
       namespace: 'app',
     },
-    clusterIssuerRefName: '',
-    issuerName: '',
-    issuerKind: 'ClusterIssuer',
+    issuerRefName: '',
+    issuerRefKind: 'ClusterIssuer',
     domain: 'app.telesto.test',
     bundleName: 'bundle-telesto',
     telesto: {
@@ -194,23 +193,23 @@ local service = k.core.v1.service;
     name='telesto-public-server',
     namespace=$._config._global.namespace,
     commonName=$._config.domain,
-    issuerName=$._config.issuerName,
-    issuerKind=$._config.issuerKind,
+    issuerRefName=$._config.issuerRefName,
+    issuerRefKind=$._config.issuerRefKind,
   ),
   certPrivateServer: certs.server.new(
     name='telesto-private-server',
     namespace=$._config._global.namespace,
     commonName='telesto-private.app',
-    issuerName=$._config.issuerName,
-    issuerKind=$._config.issuerKind,
+    issuerRefName=$._config.issuerRefName,
+    issuerRefKind=$._config.issuerRefKind,
   ),
   gateway: secureGateway.new(
     name='telesto-app',
     namespace=$._config._global.namespace,
     hostname=$._config.domain,
     gatewayClassName='nginx',
-    issuerName=$._config.issuerName,
-    issuerKind=$._config.issuerKind,
+    issuerRefName=$._config.issuerRefName,
+    issuerRefKind=$._config.issuerRefKind,
     serviceName='telesto-public',
     servicePort=$.publicPort,
     caCertConfigMapName=$._config.bundleName
@@ -255,8 +254,8 @@ local service = k.core.v1.service;
                        )
                        + cm.nogroup.v1.certificate.spec.privateKey.withAlgorithm('ECDSA')
                        + cm.nogroup.v1.certificate.spec.privateKey.withSize(256)
-                       + cm.nogroup.v1.certificate.spec.issuerRef.withName($._config.issuerName)
-                       + cm.nogroup.v1.certificate.spec.issuerRef.withKind($._config.issuerKind)
+                       + cm.nogroup.v1.certificate.spec.issuerRef.withName($._config.issuerRefName)
+                       + cm.nogroup.v1.certificate.spec.issuerRef.withKind($._config.issuerRefKind)
                        + cm.nogroup.v1.certificate.spec.issuerRef.withGroup('cert-manager.io'),
   issuerDBTeletsoServer: cm.nogroup.v1.issuer.new('issuer-db-telesto-server')
                          + cm.nogroup.v1.issuer.metadata.withNamespace($._config._global.namespace)
@@ -270,8 +269,8 @@ local service = k.core.v1.service;
                        + cm.nogroup.v1.certificate.spec.withCommonName('streaming-replica')
                        + cm.nogroup.v1.certificate.spec.withSecretName('cert-db-telesto-client')
                        + cm.nogroup.v1.certificate.spec.withUsages(['client auth'])
-                       + cm.nogroup.v1.certificate.spec.issuerRef.withName($._config.issuerName)
-                       + cm.nogroup.v1.certificate.spec.issuerRef.withKind($._config.issuerKind)
+                       + cm.nogroup.v1.certificate.spec.issuerRef.withName($._config.issuerRefName)
+                       + cm.nogroup.v1.certificate.spec.issuerRef.withKind($._config.issuerRefKind)
                        + cm.nogroup.v1.certificate.spec.issuerRef.withGroup('cert-manager.io'),
   issuerDBTelestoClient: cm.nogroup.v1.issuer.new('issuer-db-telesto-client')
                          + cm.nogroup.v1.issuer.metadata.withNamespace($._config._global.namespace)
@@ -315,8 +314,8 @@ local service = k.core.v1.service;
                               ])
                               + cm.nogroup.v1.certificate.spec.privateKey.withAlgorithm('ECDSA')
                               + cm.nogroup.v1.certificate.spec.privateKey.withSize(256)
-                              + cm.nogroup.v1.certificate.spec.issuerRef.withName($._config.issuerName)
-                              + cm.nogroup.v1.certificate.spec.issuerRef.withKind($._config.issuerKind)
+                              + cm.nogroup.v1.certificate.spec.issuerRef.withName($._config.issuerRefName)
+                              + cm.nogroup.v1.certificate.spec.issuerRef.withKind($._config.issuerRefKind)
                               + cm.nogroup.v1.certificate.spec.issuerRef.withGroup('cert-manager.io'),
   telestoDBRole: cnpg.postgresql.v1.databaseRole.new('role-telesto')
                  + cnpg.postgresql.v1.databaseRole.metadata.withNamespace($._config._global.namespace)

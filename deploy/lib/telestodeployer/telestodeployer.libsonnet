@@ -17,7 +17,7 @@ local externalSecret = es.nogroup.v1.externalSecret;
 
     argocdNamespace: 'argocd',
 
-    clusterIssuerRefName: '',
+    issuerRefName: '',
 
     helmChartRepo: 'https://open-telemetry.github.io/opentelemetry-helm-charts',
     chart: 'opentelemetry-collector',
@@ -172,7 +172,7 @@ local externalSecret = es.nogroup.v1.externalSecret;
           name: 'gateway-telesto-{{.telesto.id}}',
           namespace: 'telesto-{{.telesto.id}}',
           annotations: {
-            'cert-manager.io/cluster-issuer': $._config.clusterIssuerRefName,
+            'cert-manager.io/cluster-issuer': $._config.issuerRefName,
           },
         },
         spec: {
