@@ -1,19 +1,19 @@
 local gw = import './gateway.libsonnet';
 
 {
-  new(name, namespace, hostname, gatewayClassName, issuerName, issuerKind='ClusterIssuer', serviceName, servicePort): {
+  new(name, namespace, hostname, gatewayClassName, issuerRefName, issuerRefKind='ClusterIssuer', serviceName, servicePort): {
     gateway: gw.gateway.new(
                name=name,
                namespace=namespace,
                hostname=hostname,
                gatewayClassName=gatewayClassName
              )
-             + gw.gateway.withIssuerRef(issuerName, issuerKind),
+             + gw.gateway.withIssuerRef(issuerRefName, issuerRefKind),
     httpRoute443: gw.httpRoute.new(
       name=name,
       namespace=namespace,
       hostname=hostname,
-      parentName=gw.gateway.gatewayName(name),
+      parentRefName=gw.gateway.gatewayName(name),
       serviceName=serviceName,
       servicePort=servicePort,
     ),
@@ -21,7 +21,7 @@ local gw = import './gateway.libsonnet';
       name=name,
       namespace=namespace,
       hostname=hostname,
-      parentName=gw.gateway.gatewayName(name),
+      parentRefName=gw.gateway.gatewayName(name),
     ),
   },
 }

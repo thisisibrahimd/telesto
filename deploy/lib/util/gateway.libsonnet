@@ -1,6 +1,5 @@
 local gw = import 'github.com/jsonnet-libs/gateway-api-libsonnet/1.5/main.libsonnet';
 local gateway = gw.gateway.v1.gateway;
-local listenerSet = gw.gateway.v1.listenerSet;
 local httpRoute = gw.gateway.v1.httpRoute;
 local backendTLSPolicy = gw.gateway.v1.backendTLSPolicy;
 
@@ -40,10 +39,10 @@ local backendTLSPolicy = gw.gateway.v1.backendTLSPolicy;
   },
 
   httpRoute: {
-    new(name, namespace, hostname, parentName, sectionName='https', serviceName, servicePort): httpRoute.new('hr-' + name)
+    new(name, namespace, hostname, parentRefName, sectionName='https', serviceName, servicePort): httpRoute.new('hr-' + name)
                                                                                                + httpRoute.metadata.withNamespace(namespace)
                                                                                                + httpRoute.spec.withParentRefsMixin(
-                                                                                                 httpRoute.spec.parentRefs.withName(parentName)
+                                                                                                 httpRoute.spec.parentRefs.withName(parentRefName)
                                                                                                  + httpRoute.spec.parentRefs.withSectionName(sectionName)
                                                                                                )
                                                                                                + httpRoute.spec.withHostnamesMixin(hostname)
@@ -58,10 +57,10 @@ local backendTLSPolicy = gw.gateway.v1.backendTLSPolicy;
                                                                                                    + httpRoute.spec.rules.backendRefs.withPort(servicePort)
                                                                                                  )
                                                                                                ),
-    newTLS(name, namespace, hostname, parentName, sectionName='https', backendTLSRef, servicePort): httpRoute.new('hr-' + name + '-tls')
+    newTLS(name, namespace, hostname, parentRefName, sectionName='https', backendTLSRef, servicePort): httpRoute.new('hr-' + name + '-tls')
                                                                   + httpRoute.metadata.withNamespace(namespace)
                                                                   + httpRoute.spec.withParentRefsMixin(
-                                                                    httpRoute.spec.parentRefs.withName(parentName)
+                                                                    httpRoute.spec.parentRefs.withName(parentRefName)
                                                                     + httpRoute.spec.parentRefs.withSectionName(sectionName)
                                                                   )
                                                                   + httpRoute.spec.withHostnamesMixin(hostname)
@@ -79,10 +78,10 @@ local backendTLSPolicy = gw.gateway.v1.backendTLSPolicy;
                                                                     )
                                                                   ),
 
-    newRedirect(name, namespace, hostname, parentName, sectionName='http'): httpRoute.new('hr-' + name + '-redirect')
+    newRedirect(name, namespace, hostname, parentRefName, sectionName='http'): httpRoute.new('hr-' + name + '-redirect')
                                                                             + httpRoute.metadata.withNamespace(namespace)
                                                                             + httpRoute.spec.withParentRefsMixin(
-                                                                              httpRoute.spec.parentRefs.withName(parentName)
+                                                                              httpRoute.spec.parentRefs.withName(parentRefName)
                                                                               + httpRoute.spec.parentRefs.withSectionName(sectionName)
                                                                             )
                                                                             + httpRoute.spec.withHostnamesMixin(hostname)

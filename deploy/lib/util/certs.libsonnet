@@ -20,50 +20,51 @@ local dnsutil = import '../../lib/util/dns.libsonnet';
 
   },
   server: {
-    new(name, namespace, commonName, issuerName, issuerKind='ClusterIssuer'): certificate.new(name)
-                                                                              + certificate.metadata.withNamespace(namespace)
-                                                                              + certificate.spec.withCommonName(commonName)
-                                                                              + certificate.spec.withSecretName($.secretName(name))
-                                                                              + certificate.spec.withDnsNamesMixin(commonName)
-                                                                              + $.usages.server
-                                                                              + $.defaultKey
-                                                                              + $.withIssuerRef(issuerName, issuerKind),
+    new(name, namespace, commonName, issuerRefName, issuerRefKind='ClusterIssuer'): certificate.new(name)
+                                                                                    + certificate.metadata.withNamespace(namespace)
+                                                                                    + certificate.spec.withCommonName(commonName)
+                                                                                    + certificate.spec.withSecretName($.secretName(name))
+                                                                                    + certificate.spec.withDnsNamesMixin(commonName)
+                                                                                    + $.usages.server
+                                                                                    + $.defaultKey
+                                                                                    + $.withIssuerRef(issuerRefName, issuerRefKind),
   },
   client: {
-    new(name, namespace, commonName, issuerName, issuerKind='ClusterIssuer'): certificate.new(name)
-                                                                              + certificate.metadata.withNamespace(namespace)
-                                                                              + certificate.spec.withCommonName(commonName)
-                                                                              + certificate.spec.withSecretName($.secretName(name))
-                                                                              + certificate.spec.withDnsNamesMixin(commonName)
-                                                                              + $.usages.client
-                                                                              + $.defaultKey
-                                                                              + $.withIssuerRef(issuerName, issuerKind),
+    new(name, namespace, commonName, issuerRefName, issuerRefKind='ClusterIssuer'): certificate.new(name)
+                                                                                    + certificate.metadata.withNamespace(namespace)
+                                                                                    + certificate.spec.withCommonName(commonName)
+                                                                                    + certificate.spec.withSecretName($.secretName(name))
+                                                                                    + certificate.spec.withDnsNamesMixin(commonName)
+                                                                                    + $.usages.client
+                                                                                    + $.defaultKey
+                                                                                    + $.withIssuerRef(issuerRefName, issuerRefKind),
   },
 
   db: {
+    cnpgLabel:: certificate.spec.secretTemplate.withLabels({ 'cnpg.io/reload': '' }),
     cluster: {
-      new(name, namespace, clusterName, commonName, issuerName, issuerKind='ClusterIssuer'): certificate.new(name)
-                                                                                             + certificate.metadata.withNamespace(namespace)
-                                                                                             + certificate.spec.withCommonName(commonName)
-                                                                                             + certificate.spec.withSecretName($.secretName(name))
-                                                                                             + certificate.spec.withDnsNames(
-                                                                                               dnsutil.dnsnames.cnpg.new(clusterName, namespace)
-                                                                                             )
-                                                                                             + $.db.cnpgLabel
-                                                                                             + $.usages.server
-                                                                                             + $.defaultKey
-                                                                                             + $.withIssuerRef(issuerName, issuerKind),
+      new(name, namespace, clusterName, commonName, issuerRefName, issuerRefKind='ClusterIssuer'): certificate.new(name)
+                                                                                                   + certificate.metadata.withNamespace(namespace)
+                                                                                                   + certificate.spec.withCommonName(commonName)
+                                                                                                   + certificate.spec.withSecretName($.secretName(name))
+                                                                                                   + certificate.spec.withDnsNames(
+                                                                                                     dnsutil.dnsnames.cnpg.new(clusterName, namespace)
+                                                                                                   )
+                                                                                                   + $.db.cnpgLabel
+                                                                                                   + $.usages.server
+                                                                                                   + $.defaultKey
+                                                                                                   + $.withIssuerRef(issuerRefName, issuerRefKind),
     },
 
     client: {
-      new(name, namespace, commonName, issuerName, issuerKind='ClusterIssuer'): certificate.new(name)
-                                                                                + certificate.metadata.withNamespace(namespace)
-                                                                                + certificate.spec.withCommonName(commonName)
-                                                                                + certificate.spec.withSecretName($.secretName(name))
-                                                                                + $.db.cnpgLabel
-                                                                                + $.usages.server
-                                                                                + $.defaultKey
-                                                                                + $.withIssuerRef(issuerName, issuerKind),
+      new(name, namespace, commonName, issuerRefName, issuerRefKind='ClusterIssuer'): certificate.new(name)
+                                                                                      + certificate.metadata.withNamespace(namespace)
+                                                                                      + certificate.spec.withCommonName(commonName)
+                                                                                      + certificate.spec.withSecretName($.secretName(name))
+                                                                                      + $.db.cnpgLabel
+                                                                                      + $.usages.client
+                                                                                      + $.defaultKey
+                                                                                      + $.withIssuerRef(issuerRefName, issuerRefKind),
     },
   },
 }
