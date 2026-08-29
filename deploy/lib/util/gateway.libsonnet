@@ -9,30 +9,35 @@ local backendTLSPolicy = gw.gateway.v1.backendTLSPolicy;
 
   gateway: {
     gatewayName(name): 'gateway-' + name,
+    plain(name, namespace, gatewayClassName='nginx'): gateway.new($.gateway.gatewayName(name))
+                                                      + gateway.metadata.withNamespace(namespace)
+                                                      + gateway.spec.withGatewayClassName(gatewayClassName),
+    withHttpListener(hostname, port=80): gateway.spec.withListenersMixin(
+      gateway.spec.listeners.withName('http')
+      + gateway.spec.listeners.withPort(port)
+      + gateway.spec.listeners.withProtocol('HTTP')
+      + gateway.spec.listeners.withHostname(hostname)
+      + gateway.spec.listeners.allowedRoutes.namespaces.withFrom('Same'),
+    ),
+    withHttpsListener(namespace, hostname, port=443): gateway.spec.withListenersMixin(
+      gateway.spec.listeners.withName('https')
+      + gateway.spec.listeners.withPort(port)
+      + gateway.spec.listeners.withProtocol('HTTPS')
+      + gateway.spec.listeners.withHostname(hostname)
+      + gateway.spec.listeners.allowedRoutes.namespaces.withFrom('Same')
+      + gateway.spec.listeners.tls.withMode('Terminate')
+      + gateway.spec.listeners.tls.withCertificateRefs(
+        gateway.spec.listeners.tls.certificateRefs.withKind('Secret')
+        + gateway.spec.listeners.tls.certificateRefs.withName($.tlsSecretName(hostname))
+        + gateway.spec.listeners.tls.certificateRefs.withNamespace(namespace)
+      ),
+    ),
     new(name, namespace, hostname, gatewayClassName='nginx', httpPort=80, httpsPort=443): gateway.new($.gateway.gatewayName(name))
                                                                                           + gateway.metadata.withNamespace(namespace)
                                                                                           + gateway.spec.withGatewayClassName(gatewayClassName)
-                                                                                          + gateway.spec.withListenersMixin(
-                                                                                            gateway.spec.listeners.withName('http')
-                                                                                            + gateway.spec.listeners.withPort(httpPort)
-                                                                                            + gateway.spec.listeners.withProtocol('HTTP')
-                                                                                            + gateway.spec.listeners.withHostname(hostname)
-                                                                                            + gateway.spec.listeners.allowedRoutes.namespaces.withFrom('Same'),
-                                                                                          )
-                                                                                          + gateway.spec.withListenersMixin(
-                                                                                            gateway.spec.listeners.withName('https')
-                                                                                            + gateway.spec.listeners.withPort(httpsPort)
-                                                                                            + gateway.spec.listeners.withProtocol('HTTPS')
-                                                                                            + gateway.spec.listeners.withHostname(hostname)
-                                                                                            + gateway.spec.listeners.allowedRoutes.namespaces.withFrom('Same')
-                                                                                            + gateway.spec.listeners.tls.withMode('Terminate')
-                                                                                            + gateway.spec.listeners.tls.withCertificateRefs(
-                                                                                              gateway.spec.listeners.tls.certificateRefs.withKind('Secret')
-                                                                                              + gateway.spec.listeners.tls.certificateRefs.withName($.tlsSecretName(hostname))
-                                                                                              + gateway.spec.listeners.tls.certificateRefs.withNamespace(namespace)
-                                                                                            ),
-                                                                                          )
-                                                                                          + gateway.spec.allowedListeners.namespaces.withFrom('Same'),
+                                                                                          + gateway.spec.allowedListeners.namespaces.withFrom('Same')
+                                                                                          + $.gateway.withHttpListener(hostname, httpPort)
+                                                                                          + $.gateway.withHttpsListener(namespace, hostname, httpsPort),
     withIssuerRef(name, kind='ClusterIssuer'): gateway.metadata.withAnnotationsMixin({ 'cert-manager.io/issuer-name': name })
                                                + gateway.metadata.withAnnotationsMixin({ 'cert-manager.io/issuer-kind': kind })
                                                + gateway.metadata.withAnnotationsMixin({ 'cert-manager.io/issuer-group': 'cert-manager.io' }),
@@ -40,59 +45,59 @@ local backendTLSPolicy = gw.gateway.v1.backendTLSPolicy;
 
   httpRoute: {
     new(name, namespace, hostname, parentRefName, sectionName='https', serviceName, servicePort): httpRoute.new('hr-' + name)
-                                                                                               + httpRoute.metadata.withNamespace(namespace)
-                                                                                               + httpRoute.spec.withParentRefsMixin(
-                                                                                                 httpRoute.spec.parentRefs.withName(parentRefName)
-                                                                                                 + httpRoute.spec.parentRefs.withSectionName(sectionName)
-                                                                                               )
-                                                                                               + httpRoute.spec.withHostnamesMixin(hostname)
-                                                                                               + httpRoute.spec.withRulesMixin(
-                                                                                                 httpRoute.spec.rules.withMatchesMixin(
-                                                                                                   httpRoute.spec.rules.matches.path.withType('PathPrefix')
-                                                                                                   + httpRoute.spec.rules.matches.path.withValue('/')
+                                                                                                  + httpRoute.metadata.withNamespace(namespace)
+                                                                                                  + httpRoute.spec.withParentRefsMixin(
+                                                                                                    httpRoute.spec.parentRefs.withName(parentRefName)
+                                                                                                    + httpRoute.spec.parentRefs.withSectionName(sectionName)
+                                                                                                  )
+                                                                                                  + httpRoute.spec.withHostnamesMixin(hostname)
+                                                                                                  + httpRoute.spec.withRulesMixin(
+                                                                                                    httpRoute.spec.rules.withMatchesMixin(
+                                                                                                      httpRoute.spec.rules.matches.path.withType('PathPrefix')
+                                                                                                      + httpRoute.spec.rules.matches.path.withValue('/')
 
-                                                                                                 )
-                                                                                                 + httpRoute.spec.rules.withBackendRefsMixin(
-                                                                                                   httpRoute.spec.rules.backendRefs.withName(serviceName)
-                                                                                                   + httpRoute.spec.rules.backendRefs.withPort(servicePort)
-                                                                                                 )
-                                                                                               ),
+                                                                                                    )
+                                                                                                    + httpRoute.spec.rules.withBackendRefsMixin(
+                                                                                                      httpRoute.spec.rules.backendRefs.withName(serviceName)
+                                                                                                      + httpRoute.spec.rules.backendRefs.withPort(servicePort)
+                                                                                                    )
+                                                                                                  ),
     newTLS(name, namespace, hostname, parentRefName, sectionName='https', backendTLSRef, servicePort): httpRoute.new('hr-' + name + '-tls')
-                                                                  + httpRoute.metadata.withNamespace(namespace)
-                                                                  + httpRoute.spec.withParentRefsMixin(
-                                                                    httpRoute.spec.parentRefs.withName(parentRefName)
-                                                                    + httpRoute.spec.parentRefs.withSectionName(sectionName)
-                                                                  )
-                                                                  + httpRoute.spec.withHostnamesMixin(hostname)
-                                                                  + httpRoute.spec.withRulesMixin(
-                                                                    httpRoute.spec.rules.withMatchesMixin(
-                                                                      httpRoute.spec.rules.matches.path.withType('PathPrefix')
-                                                                      + httpRoute.spec.rules.matches.path.withValue('/')
+                                                                                                       + httpRoute.metadata.withNamespace(namespace)
+                                                                                                       + httpRoute.spec.withParentRefsMixin(
+                                                                                                         httpRoute.spec.parentRefs.withName(parentRefName)
+                                                                                                         + httpRoute.spec.parentRefs.withSectionName(sectionName)
+                                                                                                       )
+                                                                                                       + httpRoute.spec.withHostnamesMixin(hostname)
+                                                                                                       + httpRoute.spec.withRulesMixin(
+                                                                                                         httpRoute.spec.rules.withMatchesMixin(
+                                                                                                           httpRoute.spec.rules.matches.path.withType('PathPrefix')
+                                                                                                           + httpRoute.spec.rules.matches.path.withValue('/')
 
-                                                                    )
-                                                                    + httpRoute.spec.rules.withBackendRefsMixin(
-                                                                      httpRoute.spec.rules.backendRefs.withName(backendTLSRef)
-                                                                      + httpRoute.spec.rules.backendRefs.withKind('BackendTLSPolicy')
-                                                                      + httpRoute.spec.rules.backendRefs.withGroup('gateway.networking.k8s.io')
-                                                                      + httpRoute.spec.rules.backendRefs.withPort(servicePort)
-                                                                    )
-                                                                  ),
+                                                                                                         )
+                                                                                                         + httpRoute.spec.rules.withBackendRefsMixin(
+                                                                                                           httpRoute.spec.rules.backendRefs.withName(backendTLSRef)
+                                                                                                           + httpRoute.spec.rules.backendRefs.withKind('BackendTLSPolicy')
+                                                                                                           + httpRoute.spec.rules.backendRefs.withGroup('gateway.networking.k8s.io')
+                                                                                                           + httpRoute.spec.rules.backendRefs.withPort(servicePort)
+                                                                                                         )
+                                                                                                       ),
 
     newRedirect(name, namespace, hostname, parentRefName, sectionName='http'): httpRoute.new('hr-' + name + '-redirect')
-                                                                            + httpRoute.metadata.withNamespace(namespace)
-                                                                            + httpRoute.spec.withParentRefsMixin(
-                                                                              httpRoute.spec.parentRefs.withName(parentRefName)
-                                                                              + httpRoute.spec.parentRefs.withSectionName(sectionName)
-                                                                            )
-                                                                            + httpRoute.spec.withHostnamesMixin(hostname)
-                                                                            + httpRoute.spec.withRulesMixin(
-                                                                              httpRoute.spec.rules.withFiltersMixin(
-                                                                                httpRoute.spec.rules.filters.withType('RequestRedirect')
-                                                                                + httpRoute.spec.rules.filters.requestRedirect.withScheme('https')
-                                                                                + httpRoute.spec.rules.filters.requestRedirect.withStatusCode(301)
-                                                                                + httpRoute.spec.rules.filters.requestRedirect.withPort(443)
-                                                                              )
-                                                                            ),
+                                                                               + httpRoute.metadata.withNamespace(namespace)
+                                                                               + httpRoute.spec.withParentRefsMixin(
+                                                                                 httpRoute.spec.parentRefs.withName(parentRefName)
+                                                                                 + httpRoute.spec.parentRefs.withSectionName(sectionName)
+                                                                               )
+                                                                               + httpRoute.spec.withHostnamesMixin(hostname)
+                                                                               + httpRoute.spec.withRulesMixin(
+                                                                                 httpRoute.spec.rules.withFiltersMixin(
+                                                                                   httpRoute.spec.rules.filters.withType('RequestRedirect')
+                                                                                   + httpRoute.spec.rules.filters.requestRedirect.withScheme('https')
+                                                                                   + httpRoute.spec.rules.filters.requestRedirect.withStatusCode(301)
+                                                                                   + httpRoute.spec.rules.filters.requestRedirect.withPort(443)
+                                                                                 )
+                                                                               ),
 
   },
 

@@ -13,6 +13,7 @@ local dnsutil = import '../../lib/util/dns.libsonnet';
                                               + certificate.spec.issuerRef.withGroup('cert-manager.io'),
 
   secretName(name):: 'cert-' + name,
+  caSecretName(name):: 'cert-ca-' + name,
 
   usages:: {
     server: certificate.spec.withUsagesMixin(['server auth']),
@@ -42,10 +43,19 @@ local dnsutil = import '../../lib/util/dns.libsonnet';
 
   db: {
     cnpgLabel:: certificate.spec.secretTemplate.withLabels({ 'cnpg.io/reload': '' }),
-    cluster: {
-      new(name, namespace, clusterName, commonName, issuerRefName, issuerRefKind='ClusterIssuer'): certificate.new(name)
+    ca: {
+      new(name, namespace, commonName, issuerRefName, issuerRefKind='ClusterIssuer'): certificate.new(name)
                                                                                                    + certificate.metadata.withNamespace(namespace)
+                                                                                                  + certificate.spec.withIsCA(true)
                                                                                                    + certificate.spec.withCommonName(commonName)
+                                                                                                   + certificate.spec.withSecretName($.caSecretName(name))
+                                                                                                   + $.defaultKey
+                                                                                                   + $.withIssuerRef(issuerRefName, issuerRefKind),
+    },
+
+    server: {
+      new(name, namespace, clusterName, issuerRefName, issuerRefKind='ClusterIssuer'): certificate.new(name)
+                                                                                                   + certificate.metadata.withNamespace(namespace)
                                                                                                    + certificate.spec.withSecretName($.secretName(name))
                                                                                                    + certificate.spec.withDnsNames(
                                                                                                      dnsutil.dnsnames.cnpg.new(clusterName, namespace)
