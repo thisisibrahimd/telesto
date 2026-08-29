@@ -2,7 +2,7 @@ exporters:
   debug: {}
 extensions:
   bearertokenauth/telestotokenauth:
-    filename: /etc/secrets/auth/telesto.tokens
+    filename: /etc/secrets/auth/tokens.txt
   health_check:
     endpoint: ${env:MY_POD_IP}:13133
 processors:
@@ -16,6 +16,9 @@ receivers:
   otlp/auth:
     protocols:
       http:
+        tls:
+          cert_file: /etc/certs/otelcol/tls.crt
+          key_file: /etc/certs/otelcol/tls.key
         auth:
           authenticator: bearertokenauth/telestotokenauth
         endpoint: ${env:MY_POD_IP}:4318
