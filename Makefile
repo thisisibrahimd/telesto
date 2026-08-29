@@ -123,8 +123,12 @@ sync-gw-to-hosts-watch:
 	while true; do make sync-gw-to-hosts; sleep 5; done
     
 ## test otelcols instances
-test-otelcol ID:
-	telemetrygen traces --otlp-endpoint $(TELESTO_ID).t.telesto.test:4318 --otlp-header Authorization=\"Bearer\ $$(TELESTO_AUTH_TOKEN)\" --traces 1 --otlp-http
+test-otelcol:
+	telemetrygen traces \
+		--otlp-endpoint $(TELESTO_ID).t.telesto.test:4318 \
+		--otlp-header 'Authorization="Bearer $(TELESTO_AUTH_TOKEN)"' \
+		--traces 1 \
+		--otlp-http
 
 ## database
 .PHONY: gen-query

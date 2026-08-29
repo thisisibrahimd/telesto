@@ -73,16 +73,16 @@ local secrets = std.parseJson(secretsJson);
       issuerRefName: $.ca._config.clusterIssuerName,
       telesto+: {
         config+: tc.server.public.cookies.withCookieEncKey(secrets.server.public.cookies.cookieEncKey)
-                + tc.server.public.cookies.withCookieStoreKey(secrets.server.public.cookies.cookieStoreKey)
-                + tc.server.public.cookies.withSessionEncKey(secrets.server.public.cookies.sessionEncKey)
-                + tc.server.public.cookies.withSessionStoreKey(secrets.server.public.cookies.sessionStoreKey)
-                + tc.server.public.csrf.withKey(secrets.server.public.csrf.key)
-                + tc.server.private.telestoDeployer.withToken(secrets.server.private.telestoDeployer.token)
-                + tc.server.private.externalSecrets.withToken(secrets.server.private.externalSecrets.token),
+                 + tc.server.public.cookies.withCookieStoreKey(secrets.server.public.cookies.cookieStoreKey)
+                 + tc.server.public.cookies.withSessionEncKey(secrets.server.public.cookies.sessionEncKey)
+                 + tc.server.public.cookies.withSessionStoreKey(secrets.server.public.cookies.sessionStoreKey)
+                 + tc.server.public.csrf.withKey(secrets.server.public.csrf.key)
+                 + tc.server.private.telestoDeployer.withToken(secrets.server.private.telestoDeployer.token)
+                 + tc.server.private.externalSecrets.withToken(secrets.server.private.externalSecrets.token),
       },
     },
     _images+:: {
-      telesto: 'ghcr.io/thisisibrahimd/telesto:0.0.6-next-amd64',
+      telesto: 'ghcr.io/thisisibrahimd/telesto:0.0.7-next-amd64',
     },
   },
 

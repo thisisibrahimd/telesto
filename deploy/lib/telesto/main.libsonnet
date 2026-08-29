@@ -36,6 +36,7 @@ local service = k.core.v1.service;
     _global: {
       namespace: 'app',
     },
+
     issuerRefName: '',
     issuerRefKind: 'ClusterIssuer',
     domain: 'app.telesto.test',
@@ -225,22 +226,46 @@ local service = k.core.v1.service;
                                         + k.core.v1.secret.metadata.withLabels({
                                           'external-secrets.io/type': 'webhook',
                                         }),
-  telestoClusterSecretStore: clusterSecretStore.new('telesto-cluster-secret-store')
-                             + clusterSecretStore.metadata.withNamespace($._config._global.namespace)
-                             + clusterSecretStore.spec.provider.webhook.withUrl('http://telesto.app:443/telestos/{{ .remoteRef.key }}/tokens')
-                             + clusterSecretStore.spec.provider.webhook.result.withJsonPath('$.tokens')
-                             + clusterSecretStore.spec.provider.webhook.withHeaders({
-                               'Content-Type': 'application/json',
-                               Authorization: 'Bearer {{ print .auth.token }}',
-                             })
-                             + clusterSecretStore.spec.withConditions(
-                               clusterSecretStore.spec.conditions.withNamespaceRegexes('telesto-.*')
-                             )
-                             + clusterSecretStore.spec.provider.webhook.withSecrets(
-                               clusterSecretStore.spec.provider.webhook.secrets.withName('auth')
-                               + clusterSecretStore.spec.provider.webhook.secrets.secretRef.withName('telesto-cluster-secret-store-creds')
-                               + clusterSecretStore.spec.provider.webhook.secrets.secretRef.withNamespace('app')
-                             ),
+  telestoTokenClusterSecretStore: clusterSecretStore.new('telesto-token-cluster-secret-store')
+                                  + clusterSecretStore.metadata.withNamespace($._config._global.namespace)
+                                  + clusterSecretStore.spec.provider.webhook.withUrl('https://telesto-private.app:8443/api/v1/telestos/{{ .remoteRef.key }}/tokens')
+                                  + clusterSecretStore.spec.provider.webhook.result.withJsonPath('$.tokens')
+                                  + clusterSecretStore.spec.provider.webhook.withHeaders({
+                                    'Content-Type': 'application/json',
+                                    Authorization: 'Bearer {{ print .auth.token }}',
+                                  })
+                                  + clusterSecretStore.spec.withConditions(
+                                    clusterSecretStore.spec.conditions.withNamespaceRegexes('telesto-.*')
+                                  )
+                                  + clusterSecretStore.spec.provider.webhook.withSecrets(
+                                    clusterSecretStore.spec.provider.webhook.secrets.withName('auth')
+                                    + clusterSecretStore.spec.provider.webhook.secrets.secretRef.withName('telesto-cluster-secret-store-creds')
+                                    + clusterSecretStore.spec.provider.webhook.secrets.secretRef.withNamespace('app')
+                                  )
+                                  + clusterSecretStore.spec.provider.webhook.caProvider.withType('ConfigMap')
+                                  + clusterSecretStore.spec.provider.webhook.caProvider.withNamespace($._config._global.namespace)
+                                  + clusterSecretStore.spec.provider.webhook.caProvider.withName('bundle-telesto-root-ca')
+                                  + clusterSecretStore.spec.provider.webhook.caProvider.withKey('ca.crt'),
+  telestoConfigClusterSecretStore: clusterSecretStore.new('telesto-config-cluster-secret-store')
+                                   + clusterSecretStore.metadata.withNamespace($._config._global.namespace)
+                                   + clusterSecretStore.spec.provider.webhook.withUrl('https://telesto-private.app:8443/api/v1/telestos/{{ .remoteRef.key }}/config')
+                                   + clusterSecretStore.spec.provider.webhook.result.withJsonPath('$.config')
+                                   + clusterSecretStore.spec.provider.webhook.withHeaders({
+                                     'Content-Type': 'application/json',
+                                     Authorization: 'Bearer {{ print .auth.token }}',
+                                   })
+                                   + clusterSecretStore.spec.withConditions(
+                                     clusterSecretStore.spec.conditions.withNamespaceRegexes('telesto-.*')
+                                   )
+                                   + clusterSecretStore.spec.provider.webhook.withSecrets(
+                                     clusterSecretStore.spec.provider.webhook.secrets.withName('auth')
+                                     + clusterSecretStore.spec.provider.webhook.secrets.secretRef.withName('telesto-cluster-secret-store-creds')
+                                     + clusterSecretStore.spec.provider.webhook.secrets.secretRef.withNamespace('app')
+                                   )
+                                   + clusterSecretStore.spec.provider.webhook.caProvider.withType('ConfigMap')
+                                   + clusterSecretStore.spec.provider.webhook.caProvider.withNamespace($._config._global.namespace)
+                                   + clusterSecretStore.spec.provider.webhook.caProvider.withName('bundle-telesto-root-ca')
+                                   + clusterSecretStore.spec.provider.webhook.caProvider.withKey('ca.crt'),
   // database
   dbTelestoPKI: cnpgutil.pki.new(
     name='db-telesto',

@@ -19,7 +19,7 @@ local backendTLSPolicy = gw.gateway.v1.backendTLSPolicy;
       + gateway.spec.listeners.withHostname(hostname)
       + gateway.spec.listeners.allowedRoutes.namespaces.withFrom('Same'),
     ),
-    withHttpsListener(namespace, hostname, port=443): gateway.spec.withListenersMixin(
+    withHttpsListener(namespace, hostname, secretName='', templateSecretName=false, port=443): gateway.spec.withListenersMixin(
       gateway.spec.listeners.withName('https')
       + gateway.spec.listeners.withPort(port)
       + gateway.spec.listeners.withProtocol('HTTPS')
@@ -28,8 +28,12 @@ local backendTLSPolicy = gw.gateway.v1.backendTLSPolicy;
       + gateway.spec.listeners.tls.withMode('Terminate')
       + gateway.spec.listeners.tls.withCertificateRefs(
         gateway.spec.listeners.tls.certificateRefs.withKind('Secret')
-        + gateway.spec.listeners.tls.certificateRefs.withName($.tlsSecretName(hostname))
         + gateway.spec.listeners.tls.certificateRefs.withNamespace(namespace)
+        + if !templateSecretName then
+          gateway.spec.listeners.tls.certificateRefs.withName($.tlsSecretName(hostname))
+        else
+          gateway.spec.listeners.tls.certificateRefs.withName(secretName)
+
       ),
     ),
     new(name, namespace, hostname, gatewayClassName='nginx', httpPort=80, httpsPort=443): gateway.new($.gateway.gatewayName(name))
@@ -38,9 +42,10 @@ local backendTLSPolicy = gw.gateway.v1.backendTLSPolicy;
                                                                                           + gateway.spec.allowedListeners.namespaces.withFrom('Same')
                                                                                           + $.gateway.withHttpListener(hostname, httpPort)
                                                                                           + $.gateway.withHttpsListener(namespace, hostname, httpsPort),
-    withIssuerRef(name, kind='ClusterIssuer'): gateway.metadata.withAnnotationsMixin({ 'cert-manager.io/issuer-name': name })
-                                               + gateway.metadata.withAnnotationsMixin({ 'cert-manager.io/issuer-kind': kind })
-                                               + gateway.metadata.withAnnotationsMixin({ 'cert-manager.io/issuer-group': 'cert-manager.io' }),
+    withIssuerRef(name, kind='ClusterIssuer'):
+      if kind == 'Issuer' then gateway.metadata.withAnnotationsMixin({ 'cert-manager.io/issuer': name })
+      else if kind == 'ClusterIssuer' then gateway.metadata.withAnnotationsMixin({ 'cert-manager.io/cluster-issuer': name })
+      else {},
   },
 
   httpRoute: {

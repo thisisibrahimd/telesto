@@ -4,8 +4,14 @@ local argo = import '../argocd-crds/3.4.1/main.libsonnet';
 local project = argo.argoproj.v1alpha1.appProject;
 local applicationset = argo.argoproj.v1alpha1.applicationSet;
 
+local certs = import '../util/certs.libsonnet';
+
 local es = import '../external-secrets-crds/2.9.0/main.libsonnet';
 local externalSecret = es.nogroup.v1.externalSecret;
+
+local gw = import '../util/gateway.libsonnet';
+
+local metadatautil = import '../util/metadata.libsonnet';
 
 {
   local configmap = k.core.v1.configMap,
@@ -18,6 +24,7 @@ local externalSecret = es.nogroup.v1.externalSecret;
     argocdNamespace: 'argocd',
 
     issuerRefName: '',
+    issuerRefKind: 'ClusterIssuer',
 
     helmChartRepo: 'https://open-telemetry.github.io/opentelemetry-helm-charts',
     chart: 'opentelemetry-collector',
@@ -28,6 +35,7 @@ local externalSecret = es.nogroup.v1.externalSecret;
   _images:: {
   },
 
+  domainTemplate:: '{{.telesto.id}}.t.telesto.test',
   secret: k.core.v1.secret.new('telestodeployer-plugin', {
             'plugin.telestodeployer-plugin.token': std.base64($._config.telestoDeployerToken),
           }, 'Opaque')
@@ -39,7 +47,7 @@ local externalSecret = es.nogroup.v1.externalSecret;
                name='telestodeployer-plugin-config',
                data={
                  token: '$telestodeployer-plugin:plugin.telestodeployer-plugin.token',
-                 baseUrl: 'http://telesto.app:443',
+                 baseUrl: 'https://telesto-private.app:8443',
                  requestTimeout: '60',
                }
              )
@@ -53,6 +61,9 @@ local externalSecret = es.nogroup.v1.externalSecret;
     },
     command: {
       name: 'otelcol-contrib',
+      extraArgs: [
+        '--config=/conf/relay.yaml',
+      ],
     },
     annotations: {
       'reloader.stakater.com/auto': 'true',
@@ -86,6 +97,20 @@ local externalSecret = es.nogroup.v1.externalSecret;
           optional: true,
         },
       },
+      {
+        name: 'telesto-config',
+        secret: {
+          secretName: 'telesto-config',
+          optional: false,
+        },
+      },
+      {
+        name: 'otelcol-certs',
+        secret: {
+          secretName: 'cert-telesto-{{.telesto.id}}',
+          optional: false,
+        },
+      },
     ],
 
     extraVolumeMounts: [
@@ -94,137 +119,83 @@ local externalSecret = es.nogroup.v1.externalSecret;
         mountPath: '/etc/secrets/auth',
         readonly: true,
       },
+      {
+        name: 'telesto-config',
+        mountPath: '/conf',
+        readonly: true,
+      },
+      {
+        name: 'otelcol-certs',
+        mountPath: '/etc/certs/otelcol',
+        readonly: true,
+      },
     ],
 
-
-    alternateConfig: {
-      exporters: {
-        debug: {},
-      },
-      extensions: {
-        'bearertokenauth/telestotokenauth': {
-          filename: '/etc/secrets/auth/telesto.tokens',
-        },
-        health_check: {
-          endpoint: '${env:MY_POD_IP}:13133',
-        },
-      },
-      processors: {
-        batch: {},
-        memory_limiter: {
-          check_interval: '5s',
-          limit_percentage: 80,
-          spike_limit_percentage: 25,
-        },
-      },
-      receivers: {
-        'otlp/auth': {
-          protocols: {
-            http: {
-              endpoint: '${env:MY_POD_IP}:4318',
-              auth: {
-                authenticator: 'bearertokenauth/telestotokenauth',
-              },
-            },
-          },
-        },
-        'nop/blocked': {
-        },
-      },
-      service: {
-        extensions: ['health_check', '{{ if .telesto.tokensAvailable }}bearertokenauth/telestotokenauth{{ end }}'],
-        pipelines: {
-          logs: {
-            exporters: ['debug'],
-            processors: ['memory_limiter', 'batch'],
-            receivers: ['{{ if .telesto.tokensAvailable }}otlp/auth{{else}}nop/blocked{{ end }}'],
-          },
-          metrics: {
-            exporters: ['debug'],
-            processors: ['memory_limiter', 'batch'],
-            receivers: ['{{ if .telesto.tokensAvailable }}otlp/auth{{else}}nop/blocked{{ end }}'],
-          },
-          traces: {
-            exporters: ['debug'],
-            processors: ['memory_limiter', 'batch'],
-            receivers: ['{{ if .telesto.tokensAvailable }}otlp/auth{{else}}nop/blocked{{ end }}'],
-          },
-        },
-      },
+    configMap: {
+      create: false,
     },
 
+    enableConfigChecksumAnnotation: false,
+
     extraManifests: [
+      // tokens from users
       externalSecret.new('telesto-tokens')
       + externalSecret.metadata.withNamespace('telesto-{{.telesto.id}}')
-      + externalSecret.spec.secretStoreRef.withName('telesto-cluster-secret-store')
+      + externalSecret.spec.secretStoreRef.withName('telesto-token-cluster-secret-store')
       + externalSecret.spec.secretStoreRef.withKind('ClusterSecretStore')
-      + externalSecret.spec.withRefreshInterval('3s')
+      + externalSecret.spec.withRefreshInterval('5s')
       + externalSecret.spec.target.withName('telesto-tokens')
       + externalSecret.spec.target.withDeletionPolicy('Delete')
       + externalSecret.spec.withData(
-        externalSecret.spec.data.withSecretKey('telesto.tokens')
+        externalSecret.spec.data.withSecretKey('tokens.txt')
         + externalSecret.spec.data.remoteRef.withKey('{{.telesto.id}}')
       ),
-      {
-        apiVersion: 'gateway.networking.k8s.io/v1',
-        kind: 'Gateway',
-        metadata: {
-          name: 'gateway-telesto-{{.telesto.id}}',
-          namespace: 'telesto-{{.telesto.id}}',
-          annotations: {
-            'cert-manager.io/cluster-issuer': $._config.issuerRefName,
-          },
-        },
-        spec: {
-          gatewayClassName: 'nginx',
-          listeners: [{
-            name: 'https',
-            port: 4318,
-            protocol: 'HTTPS',
-            hostname: '{{.telesto.id}}.t.telesto.test',
-            allowedRoutes: {
-              namespaces: {
-                from: 'All',
-              },
-            },
-            tls: {
-              mode: 'Terminate',
-              certificateRefs: [{
-                group: '',
-                kind: 'Secret',
-                name: 'tls-test-telesto-t-{{.telesto.id}}',
-              }],
-            },
-          }],
-        },
-      },
-      {
-        apiVersion: 'gateway.networking.k8s.io/v1',
-        kind: 'HTTPRoute',
-        metadata: {
-          name: 'http-route-telesto-{{.telesto.id}}',
-          namespace: 'telesto-{{.telesto.id}}',
-        },
-        spec: {
-          parentRefs: [{
-            name: 'gateway-telesto-{{.telesto.id}}',
-            sectionName: 'https',
-          }],
-          hostnames: ['{{.telesto.id}}.t.telesto.test'],
-          rules: [{
-            matches: [{
-              path: {
-                type: 'PathPrefix',
-                value: '/',
-              },
-            }],
-            backendRefs: [{
-              name: 'telesto-{{.telesto.id}}-opentelemetry-collector',
-              port: 4318,
-            }],
-          }],
-        },
-      },
+      externalSecret.new('telesto-config')
+      + externalSecret.metadata.withNamespace('telesto-{{.telesto.id}}')
+      + externalSecret.spec.secretStoreRef.withName('telesto-config-cluster-secret-store')
+      + externalSecret.spec.secretStoreRef.withKind('ClusterSecretStore')
+      + externalSecret.spec.withRefreshInterval('5s')
+      + externalSecret.spec.target.withName('telesto-config')
+      + externalSecret.spec.target.withDeletionPolicy('Delete')
+      + externalSecret.spec.withData(
+        externalSecret.spec.data.withSecretKey('relay.yaml')
+        + externalSecret.spec.data.remoteRef.withKey('{{.telesto.id}}')
+      ),
+      certs.server.new(
+        name='telesto-{{.telesto.id}}',
+        namespace='telesto-{{.telesto.id}}',
+        commonName='{{.telesto.id}}.t.telesto.test',
+        issuerRefName=$._config.issuerRefName,
+        issuerRefKind=$._config.issuerRefKind,
+      ),
+      gw.gateway.plain(
+        name='telesto-{{.telesto.id}}',
+        namespace='telesto-{{.telesto.id}}',
+        gatewayClassName='nginx',
+      )
+      + gw.gateway.withHttpsListener(
+        namespace='telesto-{{.telesto.id}}',
+        hostname='{{.telesto.id}}.t.telesto.test',
+        secretName='tls-test-telesto-t-{{.telesto.id}}',
+        templateSecretName=true,
+        port=4318
+      )
+      + gw.gateway.withIssuerRef(name=$._config.issuerRefName, kind=$._config.issuerRefKind),
+      gw.backendTLSPolicy.new(
+        name='telesto-{{.telesto.id}}',
+        namespace='telesto-{{.telesto.id}}',
+        hostname='{{.telesto.id}}.t.telesto.test',
+        serviceName='telesto-{{.telesto.id}}-opentelemetry-collector',
+        configMapName='bundle-telesto'
+      ),
+      gw.httpRoute.new(
+        name='telesto-{{.telesto.id}}',
+        namespace='telesto-{{.telesto.id}}',
+        hostname='{{.telesto.id}}.t.telesto.test',
+        parentRefName='gateway-telesto-{{.telesto.id}}',
+        serviceName='telesto-{{.telesto.id}}-opentelemetry-collector',
+        servicePort=4318
+      ),
     ],
   },
   telestosProject: project.new('telestos')

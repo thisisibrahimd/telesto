@@ -1,6 +1,6 @@
 local gw = import './gateway.libsonnet';
 {
-  new(name, namespace, hostname, gatewayClassName, issuerRefName, issuerRefKind='ClusterIssuer', serviceName, servicePort=443, caCertConfigMapName): {
+  new(name, namespace, hostname, gatewayClassName, issuerRefName='', issuerRefKind='ClusterIssuer', serviceName, servicePort=443, caCertConfigMapName): {
     gateway: gw.gateway.new(
                name=name,
                namespace=namespace,
