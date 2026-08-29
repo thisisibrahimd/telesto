@@ -62,27 +62,6 @@ local backendTLSPolicy = gw.gateway.v1.backendTLSPolicy;
                                                                                                       + httpRoute.spec.rules.backendRefs.withPort(servicePort)
                                                                                                     )
                                                                                                   ),
-    newTLS(name, namespace, hostname, parentRefName, sectionName='https', backendTLSRef, servicePort): httpRoute.new('hr-' + name + '-tls')
-                                                                                                       + httpRoute.metadata.withNamespace(namespace)
-                                                                                                       + httpRoute.spec.withParentRefsMixin(
-                                                                                                         httpRoute.spec.parentRefs.withName(parentRefName)
-                                                                                                         + httpRoute.spec.parentRefs.withSectionName(sectionName)
-                                                                                                       )
-                                                                                                       + httpRoute.spec.withHostnamesMixin(hostname)
-                                                                                                       + httpRoute.spec.withRulesMixin(
-                                                                                                         httpRoute.spec.rules.withMatchesMixin(
-                                                                                                           httpRoute.spec.rules.matches.path.withType('PathPrefix')
-                                                                                                           + httpRoute.spec.rules.matches.path.withValue('/')
-
-                                                                                                         )
-                                                                                                         + httpRoute.spec.rules.withBackendRefsMixin(
-                                                                                                           httpRoute.spec.rules.backendRefs.withName(backendTLSRef)
-                                                                                                           + httpRoute.spec.rules.backendRefs.withKind('BackendTLSPolicy')
-                                                                                                           + httpRoute.spec.rules.backendRefs.withGroup('gateway.networking.k8s.io')
-                                                                                                           + httpRoute.spec.rules.backendRefs.withPort(servicePort)
-                                                                                                         )
-                                                                                                       ),
-
     newRedirect(name, namespace, hostname, parentRefName, sectionName='http'): httpRoute.new('hr-' + name + '-redirect')
                                                                                + httpRoute.metadata.withNamespace(namespace)
                                                                                + httpRoute.spec.withParentRefsMixin(
