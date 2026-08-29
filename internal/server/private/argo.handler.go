@@ -2,6 +2,7 @@ package private
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"github.com/thisisibrahimd/telesto/internal/server/services"
@@ -19,11 +20,12 @@ func (h *ArgoHandler) POSTExecuteParams(w http.ResponseWriter, r *http.Request) 
 	}
 	type PluginInput struct {
 		ApplicationSetName string            `json:"applicationSetName"`
-		Input              PluginInputParams `json:"input"`
+		Input              PluginInputParams `json:"input,omitzero"`
 	}
-	var input PluginInput
-	if err := json.NewDecoder(r.Body).Decode(input); err != nil {
+	var input *PluginInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		// Format error response
+		slog.Error("error reading input", slog.Any("error", err))
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}

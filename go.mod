@@ -18,6 +18,7 @@ require (
 	github.com/oapi-codegen/runtime v1.2.0
 	github.com/oklog/ulid/v2 v2.1.1
 	github.com/ory/kratos-client-go/v26 v26.2.0
+	github.com/sebdah/goldie/v2 v2.8.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	github.com/stoewer/go-strcase v1.3.1
@@ -25,7 +26,6 @@ require (
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/gen v0.3.2
 	gorm.io/gorm v1.31.1
-	resty.dev/v3 v3.0.0-rc.3
 )
 
 require (
@@ -82,8 +82,10 @@ require (
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/pb33f/ordered-map/v2 v2.3.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.4.3 // indirect
+	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
+	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
@@ -94,7 +96,6 @@ require (
 	go.yaml.in/yaml/v4 v4.0.0-rc.2 // indirect
 	golang.org/x/crypto v0.53.0 // indirect
 	golang.org/x/mod v0.37.0 // indirect
-	golang.org/x/net v0.56.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.40.0 // indirect

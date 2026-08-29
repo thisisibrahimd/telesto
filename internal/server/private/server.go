@@ -55,7 +55,8 @@ func NewServer(cfg *PrivateServerConfig, svcs *services.Services, logger *server
 
 	// register routes
 	r.With(telestoDeployerM).Post("/api/v1/getparams.execute", argoHandler.POSTExecuteParams)
-	r.With(externalSecretsM).Post("/api/v1/telestos/{id}/tokens", telestoHandler.GetTelestoTokens)
+	r.With(externalSecretsM).Get("/api/v1/telestos/{id}/tokens", telestoHandler.GetTelestoTokens)
+	r.With(externalSecretsM).Get("/api/v1/telestos/{id}/config", telestoHandler.GetTelestoConfig)
 
 	return srv
 }
