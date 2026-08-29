@@ -13,6 +13,8 @@ local sgw = import '../util/simple_gateway.libsonnet';
 
 local secureGateway = import '../util/secure_gateway.libsonnet';
 
+local cnpgutil = import '../util/cnpg.libsonnet';
+
 local cnpg = import '../cloudnative-pg-crds/1.30.0/main.libsonnet';
 local databaseRole = cnpg.postgresql.v1.databaseRole;
 local database = cnpg.postgresql.v1.database;
@@ -34,9 +36,9 @@ local service = k.core.v1.service;
     _global: {
       namespace: 'app',
     },
-    clusterIssuerRefName: '',
-    issuerName: '',
-    issuerKind: 'ClusterIssuer',
+
+    issuerRefName: '',
+    issuerRefKind: 'ClusterIssuer',
     domain: 'app.telesto.test',
     bundleName: 'bundle-telesto',
     telesto: {
@@ -151,7 +153,7 @@ local service = k.core.v1.service;
               + deployment.spec.template.spec.withVolumesMixin({
                 name: 'telesto-root-ca-cert',
                 configMap: {
-                  name: $._config.bundleName + "-root-ca",
+                  name: $._config.bundleName + '-root-ca',
                 },
               }),
   publicService: service.new('telesto-public', { name: 'telesto' }, {
@@ -194,23 +196,23 @@ local service = k.core.v1.service;
     name='telesto-public-server',
     namespace=$._config._global.namespace,
     commonName=$._config.domain,
-    issuerName=$._config.issuerName,
-    issuerKind=$._config.issuerKind,
+    issuerRefName=$._config.issuerRefName,
+    issuerRefKind=$._config.issuerRefKind,
   ),
   certPrivateServer: certs.server.new(
     name='telesto-private-server',
     namespace=$._config._global.namespace,
     commonName='telesto-private.app',
-    issuerName=$._config.issuerName,
-    issuerKind=$._config.issuerKind,
+    issuerRefName=$._config.issuerRefName,
+    issuerRefKind=$._config.issuerRefKind,
   ),
   gateway: secureGateway.new(
     name='telesto-app',
     namespace=$._config._global.namespace,
     hostname=$._config.domain,
     gatewayClassName='nginx',
-    issuerName=$._config.issuerName,
-    issuerKind=$._config.issuerKind,
+    issuerRefName=$._config.issuerRefName,
+    issuerRefKind=$._config.issuerRefKind,
     serviceName='telesto-public',
     servicePort=$.publicPort,
     caCertConfigMapName=$._config.bundleName
@@ -224,59 +226,56 @@ local service = k.core.v1.service;
                                         + k.core.v1.secret.metadata.withLabels({
                                           'external-secrets.io/type': 'webhook',
                                         }),
-  telestoClusterSecretStore: clusterSecretStore.new('telesto-cluster-secret-store')
-                             + clusterSecretStore.metadata.withNamespace($._config._global.namespace)
-                             + clusterSecretStore.spec.provider.webhook.withUrl('http://telesto.app:443/telestos/{{ .remoteRef.key }}/tokens')
-                             + clusterSecretStore.spec.provider.webhook.result.withJsonPath('$.tokens')
-                             + clusterSecretStore.spec.provider.webhook.withHeaders({
-                               'Content-Type': 'application/json',
-                               Authorization: 'Bearer {{ print .auth.token }}',
-                             })
-                             + clusterSecretStore.spec.withConditions(
-                               clusterSecretStore.spec.conditions.withNamespaceRegexes('telesto-.*')
-                             )
-                             + clusterSecretStore.spec.provider.webhook.withSecrets(
-                               clusterSecretStore.spec.provider.webhook.secrets.withName('auth')
-                               + clusterSecretStore.spec.provider.webhook.secrets.secretRef.withName('telesto-cluster-secret-store-creds')
-                               + clusterSecretStore.spec.provider.webhook.secrets.secretRef.withNamespace('app')
-                             ),
+  telestoTokenClusterSecretStore: clusterSecretStore.new('telesto-token-cluster-secret-store')
+                                  + clusterSecretStore.metadata.withNamespace($._config._global.namespace)
+                                  + clusterSecretStore.spec.provider.webhook.withUrl('https://telesto-private.app:8443/api/v1/telestos/{{ .remoteRef.key }}/tokens')
+                                  + clusterSecretStore.spec.provider.webhook.result.withJsonPath('$.tokens')
+                                  + clusterSecretStore.spec.provider.webhook.withHeaders({
+                                    'Content-Type': 'application/json',
+                                    Authorization: 'Bearer {{ print .auth.token }}',
+                                  })
+                                  + clusterSecretStore.spec.withConditions(
+                                    clusterSecretStore.spec.conditions.withNamespaceRegexes('telesto-.*')
+                                  )
+                                  + clusterSecretStore.spec.provider.webhook.withSecrets(
+                                    clusterSecretStore.spec.provider.webhook.secrets.withName('auth')
+                                    + clusterSecretStore.spec.provider.webhook.secrets.secretRef.withName('telesto-cluster-secret-store-creds')
+                                    + clusterSecretStore.spec.provider.webhook.secrets.secretRef.withNamespace('app')
+                                  )
+                                  + clusterSecretStore.spec.provider.webhook.caProvider.withType('ConfigMap')
+                                  + clusterSecretStore.spec.provider.webhook.caProvider.withNamespace($._config._global.namespace)
+                                  + clusterSecretStore.spec.provider.webhook.caProvider.withName('bundle-telesto-root-ca')
+                                  + clusterSecretStore.spec.provider.webhook.caProvider.withKey('ca.crt'),
+  telestoConfigClusterSecretStore: clusterSecretStore.new('telesto-config-cluster-secret-store')
+                                   + clusterSecretStore.metadata.withNamespace($._config._global.namespace)
+                                   + clusterSecretStore.spec.provider.webhook.withUrl('https://telesto-private.app:8443/api/v1/telestos/{{ .remoteRef.key }}/config')
+                                   + clusterSecretStore.spec.provider.webhook.result.withJsonPath('$.config')
+                                   + clusterSecretStore.spec.provider.webhook.withHeaders({
+                                     'Content-Type': 'application/json',
+                                     Authorization: 'Bearer {{ print .auth.token }}',
+                                   })
+                                   + clusterSecretStore.spec.withConditions(
+                                     clusterSecretStore.spec.conditions.withNamespaceRegexes('telesto-.*')
+                                   )
+                                   + clusterSecretStore.spec.provider.webhook.withSecrets(
+                                     clusterSecretStore.spec.provider.webhook.secrets.withName('auth')
+                                     + clusterSecretStore.spec.provider.webhook.secrets.secretRef.withName('telesto-cluster-secret-store-creds')
+                                     + clusterSecretStore.spec.provider.webhook.secrets.secretRef.withNamespace('app')
+                                   )
+                                   + clusterSecretStore.spec.provider.webhook.caProvider.withType('ConfigMap')
+                                   + clusterSecretStore.spec.provider.webhook.caProvider.withNamespace($._config._global.namespace)
+                                   + clusterSecretStore.spec.provider.webhook.caProvider.withName('bundle-telesto-root-ca')
+                                   + clusterSecretStore.spec.provider.webhook.caProvider.withKey('ca.crt'),
   // database
-  secretCertDBTelestoServer: k.core.v1.secret.new('cert-db-telesto-server', {}, 'kubernetes.io/tls')
-                             + k.core.v1.secret.metadata.withNamespace($._config._global.namespace)
-                             + k.core.v1.secret.metadata.withLabelsMixin({ 'cnpg.io/reload': '' }),
-  certDBTelestoServer: cm.nogroup.v1.certificate.new('db-telesto-server')
-                       + cm.nogroup.v1.certificate.metadata.withNamespace($._config._global.namespace)
-                       + cm.nogroup.v1.certificate.spec.withIsCA(true)
-                       + cm.nogroup.v1.certificate.spec.withCommonName('db-telesto-server')
-                       + cm.nogroup.v1.certificate.spec.withSecretName('cert-db-telesto-server')
-                       + cm.nogroup.v1.certificate.spec.withUsages(['server auth'])
-                       + cm.nogroup.v1.certificate.spec.withDnsNames(
-                         dnsutil.dnsnames.cnpg.new('telesto-db-cluster', $._config._global.namespace)
-                       )
-                       + cm.nogroup.v1.certificate.spec.privateKey.withAlgorithm('ECDSA')
-                       + cm.nogroup.v1.certificate.spec.privateKey.withSize(256)
-                       + cm.nogroup.v1.certificate.spec.issuerRef.withName($._config.issuerName)
-                       + cm.nogroup.v1.certificate.spec.issuerRef.withKind($._config.issuerKind)
-                       + cm.nogroup.v1.certificate.spec.issuerRef.withGroup('cert-manager.io'),
-  issuerDBTeletsoServer: cm.nogroup.v1.issuer.new('issuer-db-telesto-server')
-                         + cm.nogroup.v1.issuer.metadata.withNamespace($._config._global.namespace)
-                         + cm.nogroup.v1.issuer.spec.ca.withSecretName('cert-db-telesto-server'),
-  secretCertDBTelestoClient: k.core.v1.secret.new('cert-db-telesto-client', {}, 'kubernetes.io/tls')
-                             + k.core.v1.secret.metadata.withNamespace($._config._global.namespace)
-                             + k.core.v1.secret.metadata.withLabelsMixin({ 'cnpg.io/reload': '' }),
-  certDBTelestoClient: cm.nogroup.v1.certificate.new('db-telesto-client')
-                       + cm.nogroup.v1.certificate.metadata.withNamespace($._config._global.namespace)
-                       + cm.nogroup.v1.certificate.spec.withIsCA(true)
-                       + cm.nogroup.v1.certificate.spec.withCommonName('streaming-replica')
-                       + cm.nogroup.v1.certificate.spec.withSecretName('cert-db-telesto-client')
-                       + cm.nogroup.v1.certificate.spec.withUsages(['client auth'])
-                       + cm.nogroup.v1.certificate.spec.issuerRef.withName($._config.issuerName)
-                       + cm.nogroup.v1.certificate.spec.issuerRef.withKind($._config.issuerKind)
-                       + cm.nogroup.v1.certificate.spec.issuerRef.withGroup('cert-manager.io'),
-  issuerDBTelestoClient: cm.nogroup.v1.issuer.new('issuer-db-telesto-client')
-                         + cm.nogroup.v1.issuer.metadata.withNamespace($._config._global.namespace)
-                         + cm.nogroup.v1.issuer.spec.ca.withSecretName('cert-db-telesto-client'),
+  dbTelestoPKI: cnpgutil.pki.new(
+    name='db-telesto',
+    namespace=$._config._global.namespace,
+    clusterName='telesto-db-cluster',
+    issuerRefName=$._config.issuerRefName,
+    issuerRefKind=$._config.issuerRefKind
+  ),
   telestoDBCluster: helm.template('telesto-db', '../../charts/cluster', {
+    skipTest: true,
     namespace: $._config._global.namespace,
     values: {
       cluster: {
@@ -315,8 +314,8 @@ local service = k.core.v1.service;
                               ])
                               + cm.nogroup.v1.certificate.spec.privateKey.withAlgorithm('ECDSA')
                               + cm.nogroup.v1.certificate.spec.privateKey.withSize(256)
-                              + cm.nogroup.v1.certificate.spec.issuerRef.withName($._config.issuerName)
-                              + cm.nogroup.v1.certificate.spec.issuerRef.withKind($._config.issuerKind)
+                              + cm.nogroup.v1.certificate.spec.issuerRef.withName($._config.issuerRefName)
+                              + cm.nogroup.v1.certificate.spec.issuerRef.withKind($._config.issuerRefKind)
                               + cm.nogroup.v1.certificate.spec.issuerRef.withGroup('cert-manager.io'),
   telestoDBRole: cnpg.postgresql.v1.databaseRole.new('role-telesto')
                  + cnpg.postgresql.v1.databaseRole.metadata.withNamespace($._config._global.namespace)

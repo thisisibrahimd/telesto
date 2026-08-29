@@ -1,12 +1,19 @@
 local tanka = import 'github.com/grafana/jsonnet-libs/tanka-util/main.libsonnet';
 local helm = tanka.helm.new(std.thisFile);
 
+local tm = import '../trust-manager-crds/0.24.0/main.libsonnet';
+local bundle = tm.trust.v1alpha1.bundle;
+
 local argo = import '../argocd-crds/3.4.1/main.libsonnet';
 local project = argo.argoproj.v1alpha1.appProject;
 
-local sgw = import '../util/simple_gateway.libsonnet';
+local secureGateway = import '../util/secure_gateway.libsonnet';
+
+local cm = import 'github.com/jsonnet-libs/cert-manager-libsonnet/1.19/main.libsonnet';
+local certificate = cm.nogroup.v1.certificate;
 
 local certs = import '../util/certs.libsonnet';
+
 {
   _config:: {
     _global: {
@@ -14,21 +21,38 @@ local certs = import '../util/certs.libsonnet';
     },
     domain: 'argocd.telesto.test',
 
-    clusterIssuerRefName: 'cluster-issuer-central',
+    rootCASecretName: 'cert-root-ca-telesto',
+
+    issuerRefName: '',
+    issuerRefKind: 'ClusterIssuer',
     gatewayClassName: 'nginx',
+
+    telestoNamespaces: ['telestos', 'telesto-*'],
 
     oidcIssuer: 'https://dex.telesto.test',
     oidcClientID: 'argocd',
     oidcClientSecret: '',
-
   },
 
-  cert: certs.server.new(
-    name='argocd',
-    namespace=$._config._global.namespace,
-    commonName=$._config.domain,
-    issuerName=$._config.clusterIssuerRefName
-  ),
+  policy:: |||
+    g, telestoai:engineers, role:admin
+  |||,
+
+  certArgoCDServer: certs.server.new(
+                      name='argocd-server',
+                      namespace=$._config._global.namespace,
+                      commonName=$._config.domain,
+                      issuerRefName=$._config.issuerRefName
+                    )
+                    + certificate.spec.withSecretName('argocd-server-tls'),
+  certArgoCDRepoServer: certs.server.new(
+                          name='argocd-repo-server',
+                          namespace=$._config._global.namespace,
+                          commonName=$._config.domain,
+                          issuerRefName=$._config.issuerRefName
+                        )
+                        + certificate.spec.withSecretName('argocd-repo-server-tls'),
+
   // TODO: libsonnetify helm values
   argocd: helm.template('customer-captain', '../../charts/argo-cd', {
     namespace: $._config._global.namespace,
@@ -38,6 +62,27 @@ local certs = import '../util/certs.libsonnet';
           create: false,
         },
         domain: $._config.domain,
+        env: [
+          {
+            name: 'SSL_CERT_DIR',
+            value: '/etc/ssl/certs',
+          },
+        ],
+        extraVolumes: [
+          {
+            name: 'telesto-root-ca',
+            configMap: {
+              name: 'bundle-telesto',
+            },
+          },
+        ],
+        extraVolumeMounts: [
+          {
+            name: 'telesto-root-ca',
+            mountPath: '/etc/ssl/certs',
+            readOnly: true,
+          },
+        ],
       },
       applicationSet: {
         allowAnyNamespace: true,
@@ -61,10 +106,13 @@ local certs = import '../util/certs.libsonnet';
           }, indent_array_in_object=true, quote_keys=false),
         },
         params: {
-          'application.namespaces': 'telestos,telesto-*',
-          'applicationsetcontroller.namespaces': 'telestos,telesto-*',
+          'application.namespaces': std.join(',', $._config.telestoNamespaces),
+          'applicationsetcontroller.namespaces': std.join(',', $._config.telestoNamespaces),
           'applicationsetcontroller.enable.scm.providers': false,
-          'server.insecure': true,
+        },
+        rbac: {
+          'policy.default': 'role:readonly',
+          'policy.csv': $.policy,
         },
       },
       dex: {
@@ -86,13 +134,13 @@ local certs = import '../util/certs.libsonnet';
                         project.spec.namespaceResourceBlacklist.withKind('*')
                         + project.spec.namespaceResourceBlacklist.withGroup('*')
                       ),
-  gateway: sgw.new(
-    name="argocd",
+  gatewayArgoCDServer: secureGateway.new(
+    name='argocd-server',
     namespace=$._config._global.namespace,
     hostname=$._config.domain,
     gatewayClassName='nginx',
-    issuerName='cluster-issuer-central',
+    issuerRefName=$._config.issuerRefName,
     serviceName='customer-captain-argocd-server',
-    servicePort=443
+    caCertConfigMapName='bundle-telesto'
   ),
 }

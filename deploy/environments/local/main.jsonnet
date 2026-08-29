@@ -49,6 +49,7 @@ local secrets = std.parseJson(secretsJson);
   // argocd installation
   argocd: (import '../../lib/argocd/argocd.libsonnet') + {
     _config+:: {
+      issuerRefName: $.ca._config.clusterIssuerName,
       oidcClientSecret: secrets.dex.clients.argocd.secret,
     },
   },
@@ -56,6 +57,7 @@ local secrets = std.parseJson(secretsJson);
   // auth solution
   auth: (import '../../lib/auth/auth.libsonnet') + {
     _config+:: {
+      issuerRefName: $.ca._config.clusterIssuerName,
       argocdClientSecret: secrets.dex.clients.argocd.secret,
       githubClientID: secrets.dex.connectors.github.clientID,
       githubClientSecret: secrets.dex.connectors.github.clientSecret,
@@ -68,27 +70,27 @@ local secrets = std.parseJson(secretsJson);
       _global: {
         namespace: 'app',
       },
-      issuerName: $.ca._config.clusterIssuerName,
+      issuerRefName: $.ca._config.clusterIssuerName,
       telesto+: {
         config+: tc.server.public.cookies.withCookieEncKey(secrets.server.public.cookies.cookieEncKey)
-                + tc.server.public.cookies.withCookieStoreKey(secrets.server.public.cookies.cookieStoreKey)
-                + tc.server.public.cookies.withSessionEncKey(secrets.server.public.cookies.sessionEncKey)
-                + tc.server.public.cookies.withSessionStoreKey(secrets.server.public.cookies.sessionStoreKey)
-                + tc.server.public.csrf.withKey(secrets.server.public.csrf.key)
-                + tc.server.private.telestoDeployer.withToken(secrets.server.private.telestoDeployer.token)
-                + tc.server.private.externalSecrets.withToken(secrets.server.private.externalSecrets.token),
+                 + tc.server.public.cookies.withCookieStoreKey(secrets.server.public.cookies.cookieStoreKey)
+                 + tc.server.public.cookies.withSessionEncKey(secrets.server.public.cookies.sessionEncKey)
+                 + tc.server.public.cookies.withSessionStoreKey(secrets.server.public.cookies.sessionStoreKey)
+                 + tc.server.public.csrf.withKey(secrets.server.public.csrf.key)
+                 + tc.server.private.telestoDeployer.withToken(secrets.server.private.telestoDeployer.token)
+                 + tc.server.private.externalSecrets.withToken(secrets.server.private.externalSecrets.token),
       },
     },
     _images+:: {
-      telesto: 'ghcr.io/thisisibrahimd/telesto:0.0.6-next-amd64',
+      telesto: 'ghcr.io/thisisibrahimd/telesto:0.0.7-next-amd64',
     },
   },
 
   // telesto deployer
   telestodeployer: (import '../../lib/telestodeployer/telestodeployer.libsonnet') + {
     _config+:: {
-      clusterIssuerRefName: $.ca._config.clusterIssuerName,
 
+      issuerRefName: $.ca._config.clusterIssuerName,
       telestoDeployerToken: secrets.server.private.telestoDeployer.token,
     },
   },

@@ -1,0 +1,61 @@
+exporters:
+  debug: {}
+extensions:
+  bearertokenauth/telestotokenauth:
+    filename: /etc/secrets/auth/tokens.txt
+  health_check:
+    endpoint: ${env:MY_POD_IP}:13133
+processors:
+  batch: {}
+  memory_limiter:
+    check_interval: 5s
+    limit_percentage: 80
+    spike_limit_percentage: 25
+receivers:
+  nop/blocked: {}
+  otlp/auth:
+    protocols:
+      http:
+        tls:
+          cert_file: /etc/certs/otelcol/tls.crt
+          key_file: /etc/certs/otelcol/tls.key
+        auth:
+          authenticator: bearertokenauth/telestotokenauth
+        endpoint: ${env:MY_POD_IP}:4318
+service:
+  extensions:
+  - health_check
+  
+  - bearertokenauth/telestotokenauth
+  
+  pipelines:
+    logs:
+      exporters:
+      - debug
+      processors:
+      - memory_limiter
+      - batch
+      receivers:
+      
+      - otlp/auth
+      
+    metrics:
+      exporters:
+      - debug
+      processors:
+      - memory_limiter
+      - batch
+      receivers:
+      
+      - otlp/auth
+      
+    traces:
+      exporters:
+      - debug
+      processors:
+      - memory_limiter
+      - batch
+      receivers:
+      
+      - otlp/auth
+      
