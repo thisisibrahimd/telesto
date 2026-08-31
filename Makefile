@@ -1,3 +1,5 @@
+ENVIRONMENT_NAME?=local
+
 ## jsonnet-bundler
 .PHONY: jb-update
 jb-update:
@@ -13,32 +15,34 @@ charts-vendor:
 	cd deploy/ && tk tool charts vendor
 	
 ## tanka
-TANKA_ENVIRONMENT_PATH=deploy/environments/local
+TANKA_ENVIRONMENT_PATH=environments/$(ENVIRONMENT_NAME)
 TANKA_ENVIRONMENT_NAME=$(notdir $(TANKA_ENVIRONMENT_PATH))
+TANKA_SECRETS_FILE=secrets/$(ENVIRONMENT_NAME)/tanka.json
+DECRYPTED_SECRETS=SECRETS="$$($(SOPS_AGE_KEY_FILE_ENV) sops --decrypt $(TANKA_SECRETS_FILE))"
 TANKA_EXT_FLAGS = \
-	--ext-str "secretsJson=$$(sops decrypt secrets/local/tanka.json)"
+	--ext-str "secretsJson=$$SECRETS"
 TANKA_CRD_FILTER=--target 'CustomResourceDefinition/.+'
 TANKA_NON_CRD_FILTER=--target '!CustomResourceDefinition/.+'
 TANKA_ARGS:=
 .PHONY: tk-lint
 tk-lint:
-	tk lint $(TANKA_ENVIRONMENT_PATH)
+	cd deploy && tk lint $(TANKA_ENVIRONMENT_PATH)
 
 .PHONY: tk-diff
 tk-diff:
-	tk diff $(TANKA_ENVIRONMENT_PATH) $(TANKA_EXT_FLAGS)
+	$(DECRYPTED_SECRETS) && cd deploy && tk diff $(TANKA_ENVIRONMENT_PATH) $(TANKA_EXT_FLAGS)
 
 .PHONY: tk-apply-crds
 tk-apply-crds:
-	tk apply $(TANKA_ENVIRONMENT_PATH) $(TANKA_EXT_FLAGS) $(TANKA_CRD_FILTER) --auto-approve always
+	$(DECRYPTED_SECRETS) && cd deploy && tk apply $(TANKA_ENVIRONMENT_PATH) $(TANKA_EXT_FLAGS) $(TANKA_CRD_FILTER) --auto-approve always
 
 .PHONY: tk-apply
 tk-apply:
-	tk apply $(TANKA_ENVIRONMENT_PATH) $(TANKA_EXT_FLAGS) $(TANKA_NON_CRD_FILTER) --auto-approve always
+	$(DECRYPTED_SECRETS) && cd deploy && tk apply $(TANKA_ENVIRONMENT_PATH) $(TANKA_EXT_FLAGS) $(TANKA_NON_CRD_FILTER) --auto-approve always
 
 .PHONY: tk-prune
 tk-prune:
-	tk prune $(TANKA_ENVIRONMENT_PATH) $(TANKA_EXT_FLAGS) --auto-approve always
+	$(DECRYPTED_SECRETS) && cd deploy && tk prune $(TANKA_ENVIRONMENT_PATH) $(TANKA_EXT_FLAGS) --auto-approve always
 
 ## kind cluster management
 KIND_CLUSTER?=cluster-local-telesto
@@ -50,11 +54,17 @@ LOAD_CONTAINER_IMAGE?=true
 cluster-create:
 	kind create cluster --config "$(KIND_CLUSTER_CONFIG)" --kubeconfig $(KIND_CLUSTER_KUBECONFIG)
 
-config-download:
+.PHONY: cluster-kubeconfig-download
+cluster-kubeconfig-download:
 	kind get kubeconfig --name $(KIND_CLUSTER_NAME) > $(KIND_CLUSTER_KUBECONFIG)
 
+.PHONY: cluster-delete
 cluster-delete:
 	kind delete cluster --name $(KIND_CLUSTER_NAME)
+
+.PHONY: kubectl
+kubectl:
+	KUBECONFIG=$(KIND_CLUSTER_KUBECONFIG) kubectl $(KUBECTL_ARGS)
 
 ### libsonnet libraries
 .PHONY: gen-libsonnet-libraries
@@ -141,22 +151,30 @@ gen-cfg-jsonschema:
 	go generate ./internal/config/...
 	
 # sops
+SOPS_AGE_KEY_FILE_ENV=SOPS_AGE_KEY_FILE="secrets/$(ENVIRONMENT_NAME)/keys.txt"
 .PHONY: sops
 sops:
-	sops $(SOPS_ARGS)
+	$(SOPS_AGE_KEY_FILE_ENV) sops $(SOPS_ARGS)
 
-# ca
-# https://learnings.bolmaster2.com/posts/add-certificates-to-trust-stores#macos-trust-store
-# https://ss64.com/mac/security-cert.html
-.PHONY: install-local-root-ca-macos
-install-local-root-ca-macos:
+.PHONY: sops-encrypt
+sops-encrypt:
+	$(SOPS_AGE_KEY_FILE_ENV) sops --encrypt $(SOPS_FILE)
+	
+.PHONY: sops-decrypt
+sops-decrypt:
+	$(SOPS_AGE_KEY_FILE_ENV) sops --decrypt $(SOPS_FILE)
+
+.PHONY: sops-edit
+sops-edit:
+	$(SOPS_AGE_KEY_FILE_ENV) sops --edit $(SOPS_FILE)
+
+.PHONY: install-local-root-ca
+install-local-root-ca:
 	mkdir -p tmp
 	kubectl get secrets -n cert-manager cert-root-ca-telesto -o json | jq -r '.data.["tls.crt"]' | base64 -d > ./tmp/ca.crt
-	sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ./tmp/ca.crt
-
+	mkcert -install -cert-file ./tmp/ca.crt
 
 ## util
-
 .PHONY: gen-token
 gen-token:
 	openssl rand -hex 32
