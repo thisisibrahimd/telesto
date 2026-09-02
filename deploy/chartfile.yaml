@@ -16,6 +16,10 @@ repositories:
   url: https://stakater.github.io/stakater-charts
 - name: ory
   url: https://k8s.ory.com/helm/charts
+- name: grafana-community
+  url: https://grafana-community.github.io/helm-charts
+- name: grafana
+  url: oci://ghcr.io/grafana/helm-charts
 requires:
 - chart: jetstack/cert-manager
   version: v1.21.1
@@ -37,4 +41,6 @@ requires:
   version: v0.24.0
 - chart: stakater/reloader
   version: 2.2.16
+- chart: grafana/grafana-operator
+  version: 5.25.0
 version: 1

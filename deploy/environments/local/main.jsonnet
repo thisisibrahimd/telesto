@@ -19,6 +19,20 @@ local _namespaces = [
   'reloader',
 ];
 
+
+// components
+local ca = import '../../lib/networking/ca.libsonnet';
+local tm = import '../../lib/networking/tm.libsonnet';
+local gateway = import '../../lib/networking/gateway.libsonnet';
+local reloader = import '../../lib/reloader/reloader.libsonnet';
+local cnpgSystem = import '../../lib/storage/cnpg_system.libsonnet';
+local monitoring = import '../../lib/monitoring/monitoring.libsonnet';
+local externalSecrets = import '../../lib/external-secrets/externalsecrets.libsonnet';
+local argocd = import '../../lib/argocd/argocd.libsonnet';
+local auth = import '../../lib/auth/auth.libsonnet';
+local telesto = import '../../lib/telesto/main.libsonnet';
+local telestoDeployer = import '../../lib/telestodeployer/telestodeployer.libsonnet';
+
 // secrets
 local secretsJson = std.extVar('secretsJson');
 local secrets = std.parseJson(secretsJson);
@@ -29,25 +43,32 @@ local secrets = std.parseJson(secretsJson);
 
   // components
   // cert management
-  ca: (import '../../lib/networking/ca.libsonnet'),
+  ca: ca,
 
   // trust-manager
-  tm: (import '../../lib/networking/tm.libsonnet'),
+  tm: tm,
 
   // gateway management
-  gateway: (import '../../lib/networking/gateway.libsonnet'),
+  gateway: gateway,
 
   // reloader
-  reloader: (import '../../lib/reloader/reloader.libsonnet'),
+  reloader: reloader,
 
   // database management
-  cnpgSystem: (import '../../lib/storage/cnpg_system.libsonnet'),
+  cnpgSystem: cnpgSystem,
+
+  // monitoring/obesrvability stack
+  monitoring: monitoring {
+    _config+:: {
+      issuerRefName: $.ca._config.clusterIssuerName,
+    }
+  },
 
   // external-secrets
-  externalSecrets: (import '../../lib/external-secrets/externalsecrets.libsonnet'),
+  externalSecrets: externalSecrets,
 
   // argocd installation
-  argocd: (import '../../lib/argocd/argocd.libsonnet') + {
+  argocd: argocd {
     _config+:: {
       issuerRefName: $.ca._config.clusterIssuerName,
       oidcClientSecret: secrets.dex.clients.argocd.secret,
@@ -55,7 +76,7 @@ local secrets = std.parseJson(secretsJson);
   },
 
   // auth solution
-  auth: (import '../../lib/auth/auth.libsonnet') + {
+  auth: auth {
     _config+:: {
       issuerRefName: $.ca._config.clusterIssuerName,
       argocdClientSecret: secrets.dex.clients.argocd.secret,
@@ -65,7 +86,7 @@ local secrets = std.parseJson(secretsJson);
   },
 
   // telesto app
-  telesto: (import '../../lib/telesto/main.libsonnet') + {
+  telesto: telesto {
     _config+:: {
       _global: {
         namespace: 'app',
@@ -87,7 +108,7 @@ local secrets = std.parseJson(secretsJson);
   },
 
   // telesto deployer
-  telestodeployer: (import '../../lib/telestodeployer/telestodeployer.libsonnet') + {
+  telestodeployer: telestoDeployer {
     _config+:: {
 
       issuerRefName: $.ca._config.clusterIssuerName,
