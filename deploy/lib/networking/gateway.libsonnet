@@ -8,6 +8,11 @@ local issuer = cm.nogroup.v1.issuer;
 
 local certs = import '../util/certs.libsonnet';
 
+local gw = import 'github.com/jsonnet-libs/gateway-api-libsonnet/1.5/main.libsonnet';
+local gateway = gw.gateway.v1.gateway;
+
+local gwutil = import '../util/gateway.libsonnet';
+
 {
   _config:: {
     _global: {
@@ -28,7 +33,7 @@ local certs = import '../util/certs.libsonnet';
                      + certificate.spec.issuerRef.withKind('ClusterIssuer')
                      + certificate.spec.issuerRef.withGroup('cert-manager.io'),
   // crds for gateway k8s api
-  k8sGatewayApiCRDS: kustomize.build('gatewaycrds/localized-gatewaycrds'),
+  k8sGatewayApiCRDS: kustomize.build('gatewaycrds'),
   // ca cert for nginx gateway
   caCertNginxGateway: certificate.new('nginx-gateway-ca')
                       + certificate.metadata.withNamespace($._config._global.namespace)
@@ -53,7 +58,7 @@ local certs = import '../util/certs.libsonnet';
                      'digital signature',
                      'key encipherment',
                    ])
-                   + certificate.spec.withDnsNames('ngf-nginx-gateway-fabric.nginx-gateway.svc') # unique
+                   + certificate.spec.withDnsNames('ngf-nginx-gateway-fabric.nginx-gateway.svc')  // unique
                    + self.issuerNginxGatewayRef,
   certNginxAgent: certificate.new($._config.agentCertificateName)
                   + certificate.metadata.withNamespace($._config._global.namespace)
@@ -62,7 +67,7 @@ local certs = import '../util/certs.libsonnet';
                     'digital signature',
                     'key encipherment',
                   ])
-                  + certificate.spec.withDnsNames('*.cluster.local') # unique
+                  + certificate.spec.withDnsNames('*.cluster.local')  // unique
                   + self.issuerNginxGatewayRef,
   // TODO: libsonnetify helm values
   ngf: helm.template('ngf', '../../charts/nginx-gateway-fabric', {
@@ -75,4 +80,44 @@ local certs = import '../util/certs.libsonnet';
       },
     },
   }),
+
+  // // gateways
+  // // app gateway for applications exposed to customers
+  // gatewayApp: gwutil.gateway.plain(
+  //               name='app',
+  //               namespace='app',
+  //               gatewayClassName='nginx'
+  //             )
+  //             + gateway.spec.allowedListeners.namespaces.selector.withMatchExpressions(
+  //               gateway.spec.allowedListeners.namespaces.selector.matchExpressions.withKey('metadata.name')
+  //               + gateway.spec.allowedListeners.namespaces.selector.matchExpressions.withOperator('In')
+  //               + gateway.spec.allowedListeners.namespaces.selector.matchExpressions.withValues(['app', 'auth'])
+  //             )
+  //             + gwutil.gateway.withIssuerRef(
+  //               name=$._config.clusterIssuerRefName
+  //             ),
+  // // internal gateways for internal operators
+  // gatewayInternal: gwutil.gateway.plain(
+  //                    name='internal',
+  //                    namespace='nginx-gateway',
+  //                    gatewayClassName='nginx'
+  //                  )
+  //                  + gateway.spec.allowedListeners.namespaces.selector.withMatchExpressions(
+  //                    gateway.spec.allowedListeners.namespaces.selector.matchExpressions.withKey('metadata.name')
+  //                    + gateway.spec.allowedListeners.namespaces.selector.matchExpressions.withOperator('In')
+  //                    + gateway.spec.allowedListeners.namespaces.selector.matchExpressions.withValues(['argocd'])
+  //                  )
+  //                  + gwutil.gateway.withIssuerRef(
+  //                    name=$._config.clusterIssuerRefName
+  //                  ),
+  // // telesto gateway for customer telesto instances
+  // gatewayTelesto: gwutil.gateway.plain(
+  //                   name='telesto',
+  //                   namespace='telestos',
+  //                   gatewayClassName='nginx'
+  //                 )
+  //                 + gateway.spec.allowedListeners.namespaces.selector.withMatchLabels({ 'telesto-deployed': 'true' })
+  //                 + gwutil.gateway.withIssuerRef(
+  //                   name=$._config.clusterIssuerRefName
+  //                 ),
 }
