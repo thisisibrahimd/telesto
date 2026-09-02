@@ -17,7 +17,7 @@ repositories:
 - name: ory
   url: https://k8s.ory.com/helm/charts
 - name: grafana-community
-  url: https://grafana-community.github.io/helm-charts
+  url: oci://ghcr.io/grafana-community/helm-charts
 - name: grafana
   url: oci://ghcr.io/grafana/helm-charts
 requires:
@@ -43,4 +43,6 @@ requires:
   version: 2.2.16
 - chart: grafana/grafana-operator
   version: 5.25.0
+- chart: grafana-community/loki
+  version: 18.11.7
 version: 1
