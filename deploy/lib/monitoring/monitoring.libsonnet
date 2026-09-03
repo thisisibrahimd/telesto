@@ -417,12 +417,6 @@ local secureGateway = import '../util/secure_gateway.libsonnet';
                         )
                         + statefulSet.metadata.withNamespace($._config._global.namespace)
                         + statefulSet.spec.withServiceName('mimir-internal-headless')
-                        // + statefulSet.spec.selector.withMatchLabelsMixin({
-                        //   app: 'mimir-internal',
-                        // })
-                        // + statefulSet.spec.template.metadata.withLabelsMixin({
-                        //   app: 'mimir-internal',
-                        // })
                         + statefulSet.spec.template.spec.withVolumesMixin({
                           name: 'cert-mimir-internal',
                           secret: {
@@ -466,5 +460,65 @@ local secureGateway = import '../util/secure_gateway.libsonnet';
       issuerRefKind=$._config.issuerRefKind,
     ),
 
+    tempo_helm: helm.template('tempo-internal', '../../charts/tempo', {
+      skipTests: true,
+      namespace: $._config._global.namespace,
+      values: {
+        tempo: {
+          server: {
+            http_tls_config: {
+              cert_file: '/etc/certs/tempo/tls.crt',
+              key_file: '/etc/certs/tempo/tls.key',
+            },
+          },
+          readinessProbe: {
+            httpGet: {
+              scheme: 'HTTPS',
+            },
+          },
+          livenessProbe: {
+            httpGet: {
+              scheme: 'HTTPS',
+            },
+          },
+          extraVolumeMounts: [{
+            name: 'cert-tempo-internal',
+            mountPath: '/etc/certs/tempo',
+            readOnly: true,
+          }],
+        },
+
+        persistence: {
+          enabled: true,
+          size: '2Gi',
+        },
+
+        extraVolumes: [{
+          name: 'cert-tempo-internal',
+          secret: {
+            secretName: 'cert-tempo-internal',
+          },
+        }],
+      },
+    }),
+    tempo_datasource: datasource.new('gd-tempo-internal')
+                      + datasource.metadata.withNamespace($._config._global.namespace)
+                      + datasource.spec.instanceSelector.withMatchLabelsMixin({
+                        instance: 'internal',
+                      })
+                      + datasource.spec.datasource.withName('tempo-internal')
+                      + datasource.spec.datasource.withType('tempo')
+                      + datasource.spec.datasource.withAccess('proxy')
+                      + datasource.spec.datasource.withUrl('https://tempo-internal.monitoring:3200')
+                      + datasource.spec.datasource.withJsonDataMixin({
+                        tlsSkipVerify: true,
+                        manageAlerts: false,
+                        serviceMap: {
+                          datasourceUid: 'mimir-internal',
+                        },
+                        nodeGraph: {
+                          enabled: true
+                        },
+                      }),
   },
 }
