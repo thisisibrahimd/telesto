@@ -99,6 +99,7 @@ local secureGateway = import '../util/secure_gateway.libsonnet';
             commonConfig: {
               replication_factor: 1,
             },
+            allow_structured_metadata: true,
             server: {
               http_tls_config: {
                 cert_file: '/etc/certs/loki/tls.crt',
@@ -163,6 +164,13 @@ local secureGateway = import '../util/secure_gateway.libsonnet';
                 scheme: 'HTTPS',
               },
             },
+            livenessProbe: {
+              httpGet: {
+                path: '/ready',
+                port: 3100,
+                scheme: 'HTTPS',
+              },
+            },
             extraEnv: [{
               name: 'GOMEMLIMIT',
               value: '3740MiB',
@@ -198,7 +206,6 @@ local secureGateway = import '../util/secure_gateway.libsonnet';
           gateway: {
             enabled: false,
           },
-
           backend: {
             replicas: 0,
           },
@@ -517,8 +524,257 @@ local secureGateway = import '../util/secure_gateway.libsonnet';
                           datasourceUid: 'mimir-internal',
                         },
                         nodeGraph: {
-                          enabled: true
+                          enabled: true,
                         },
                       }),
+  },
+
+  opentelemetry_operator: {
+    opentelemetry_operator_helm: helm.template('otel-op-internal', '../../charts/opentelemetry-operator', {
+      skipTests: true,
+      namespace: $._config._global.namespace,
+      values: {
+        manager: {
+          collectorImage: {
+            repository: 'ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-contrib',
+            tag: '0.158.0',
+          },
+          targetAllocatorImage: {
+            repository: 'ghcr.io/open-telemetry/opentelemetry-operator/target-allocator',
+            tag: '0.158.0',
+          },
+        },
+        admissionWebhooks: {
+          certManager: {
+            issuerRef: {
+              name: $._config.issuerRefName,
+              kind: $._config.issuerRefKind,
+
+            },
+          },
+        },
+      },
+    }),
+  },
+
+  opentelemetry_collector: {
+    otelcol_gateway_internal_cert: certs.server.new(
+      name='otelcol-gateway-internal',
+      namespace=$._config._global.namespace,
+      commonName='otelcol-gateway-internal-collector.' + $._config._global.namespace,
+      issuerRefName=$._config.issuerRefName,
+      issuerRefKind=$._config.issuerRefKind,
+    ),
+    local otelop = import '../opentelemetry-operator-crds/0.158.0/main.libsonnet',
+    local otelcol = otelop.opentelemetry.v1beta1.openTelemetryCollector,
+    opentelemetry_collector_gateway_internal: otelcol.new('otelcol-gateway-internal')
+                                              + otelcol.metadata.withNamespace($._config._global.namespace)
+                                              + otelcol.spec.withVolumesMixin(
+                                                otelcol.spec.volumes.withName('telesto-root-ca')
+                                                + otelcol.spec.volumes.configMap.withName('bundle-telesto-root-ca')
+                                              )
+                                              + otelcol.spec.withVolumesMixin(
+                                                otelcol.spec.volumes.withName('cert-otelcol-gateway-internal')
+                                                + otelcol.spec.volumes.secret.withSecretName('cert-otelcol-gateway-internal')
+                                              )
+                                              + otelcol.spec.withVolumeMountsMixin(
+                                                otelcol.spec.volumeMounts.withName('telesto-root-ca')
+                                                + otelcol.spec.volumeMounts.withMountPath('/etc/certs/telesto-root-ca')
+                                                + otelcol.spec.volumeMounts.withReadOnly(true)
+                                              )
+                                              + otelcol.spec.withVolumeMountsMixin(
+                                                otelcol.spec.volumeMounts.withName('cert-otelcol-gateway-internal')
+                                                + otelcol.spec.volumeMounts.withMountPath('/etc/certs/otelcol-gateway-internal')
+                                                + otelcol.spec.volumeMounts.withReadOnly(true)
+                                              )
+                                              + otelcol.spec.config.withExportersMixin({
+                                                'otlp_http/loki_internal': {
+                                                  endpoint: 'https://loki-internal.monitoring:3100/otlp',
+                                                  tls: {
+                                                    ca_file: '/etc/certs/telesto-root-ca/ca.crt',
+                                                  },
+                                                },
+                                              })
+                                              + otelcol.spec.config.withExportersMixin({
+                                                'otlp_http/mimir_internal': {
+                                                  endpoint: 'https://mimir-internal.monitoring:9009/otlp',
+                                                  tls: {
+                                                    ca_file: '/etc/certs/telesto-root-ca/ca.crt',
+                                                  },
+                                                },
+                                              })
+                                              + otelcol.spec.config.withExportersMixin({
+                                                'otlp_http/tempo_internal': {
+                                                  endpoint: 'https://tempo-internal.monitoring:4128/otlp',
+                                                  tls: {
+                                                    ca_file: '/etc/certs/telesto-root-ca/ca.crt',
+                                                  },
+                                                },
+                                              })
+                                              + otelcol.spec.config.withReceiversMixin({
+                                                filelog: {
+                                                  include: [
+                                                    '/var/log/pods/*/*/*.log',
+                                                  ],
+                                                  exclude: [
+                                                    '/var/log/pods/*/otel-collector/*.log',
+                                                  ],
+                                                  start_at: 'end',
+                                                  include_file_path: true,
+                                                  include_file_name: false,
+                                                  operators: [
+                                                    {
+                                                      type: 'container',
+                                                      id: 'container-parser',
+                                                    },
+                                                  ],
+                                                },
+                                              })
+                                              + otelcol.spec.config.withReceiversMixin({
+                                                'otlp/gateway_internal': {
+                                                  protocols: {
+                                                    http: {
+                                                      endpoint: '0.0.0.0:4318',
+                                                      tls: {
+                                                        cert_file: '/etc/certs/otelcol-gateway-internal/tls.crt',
+                                                        key_file: '/etc/certs/otelcol-gateway-internal/tls.key',
+                                                      },
+                                                    },
+                                                  },
+                                                },
+                                              })
+                                              + otelcol.spec.config.withProcessorsMixin({
+                                                batch: {},
+                                              })
+                                              + otelcol.spec.config.withProcessorsMixin({
+                                                memory_limiter: {
+                                                  check_interval: '5s',
+                                                  limit_percentage: 80,
+                                                  spike_limit_percentage: 25,
+                                                },
+                                              })
+                                              + otelcol.spec.config.withExtensionsMixin({
+                                                health_check: {
+                                                  endpoint: '0.0.0.0:13133',
+                                                },
+                                              })
+                                              + otelcol.spec.config.service.withPipelinesMixin({
+                                                logs: {
+                                                  exporters: ['otlp_http/loki_internal'],
+                                                  processors: ['memory_limiter', 'batch'],
+                                                  receivers: ['otlp/gateway_internal'],
+                                                },
+                                              })
+                                              + otelcol.spec.config.service.withPipelinesMixin({
+                                                metrics: {
+                                                  exporters: ['otlp_http/mimir_internal'],
+                                                  processors: ['memory_limiter', 'batch'],
+                                                  receivers: ['otlp/gateway_internal'],
+                                                },
+                                              })
+                                              + otelcol.spec.config.service.withPipelinesMixin({
+                                                traces: {
+                                                  exporters: ['otlp_http/tempo_internal'],
+                                                  processors: ['memory_limiter', 'batch'],
+                                                  receivers: ['otlp/gateway_internal'],
+                                                },
+                                              }),
+    otelcol_agent_internal_cert: certs.server.new(
+      name='otelcol-agent-internal',
+      namespace=$._config._global.namespace,
+      commonName='otelcol-agent-internal-collector.' + $._config._global.namespace,
+      issuerRefName=$._config.issuerRefName,
+      issuerRefKind=$._config.issuerRefKind,
+    ),
+    opentelemetry_collector_agent_internal: otelcol.new('otelcol-agent-internal')
+                                            + otelcol.metadata.withNamespace($._config._global.namespace)
+                                            + otelcol.spec.withMode('daemonset')
+                                            + otelcol.spec.withVolumesMixin(
+                                              otelcol.spec.volumes.withName('varlogpods')
+                                              + otelcol.spec.volumes.hostPath.withPath('/var/log/pods')
+                                            )
+                                            + otelcol.spec.withVolumesMixin(
+                                              otelcol.spec.volumes.withName('telesto-root-ca')
+                                              + otelcol.spec.volumes.configMap.withName('bundle-telesto-root-ca')
+                                            )
+                                            + otelcol.spec.withVolumesMixin(
+                                              otelcol.spec.volumes.withName('cert-otelcol-agent-internal')
+                                              + otelcol.spec.volumes.secret.withSecretName('cert-otelcol-agent-internal')
+                                            )
+                                            + otelcol.spec.withVolumeMountsMixin(
+                                              otelcol.spec.volumeMounts.withName('varlogpods')
+                                              + otelcol.spec.volumeMounts.withMountPath('/var/log/pods')
+                                              + otelcol.spec.volumeMounts.withReadOnly(true)
+                                            )
+                                            + otelcol.spec.withVolumeMountsMixin(
+                                              otelcol.spec.volumeMounts.withName('telesto-root-ca')
+                                              + otelcol.spec.volumeMounts.withMountPath('/etc/certs/telesto-root-ca')
+                                              + otelcol.spec.volumeMounts.withReadOnly(true)
+                                            )
+                                            + otelcol.spec.withVolumeMountsMixin(
+                                              otelcol.spec.volumeMounts.withName('cert-otelcol-agent-internal')
+                                              + otelcol.spec.volumeMounts.withMountPath('/etc/certs/otelcol-agent-internal')
+                                              + otelcol.spec.volumeMounts.withReadOnly(true)
+                                            )
+                                            + otelcol.spec.config.withExportersMixin({
+                                              'otlp_http/otelcol_gateway_internal': {
+                                                endpoint: 'https://otelcol-gateway-internal-collector.monitoring:4318',
+                                                tls: {
+                                                  ca_file: '/etc/certs/telesto-root-ca/ca.crt',
+                                                },
+                                              },
+                                            })
+                                            + otelcol.spec.config.withProcessorsMixin({
+                                              k8sattributes: {
+                                                extract: {
+                                                  metadata: [
+                                                    'k8s.namespace.name',
+                                                    'k8s.pod.name',
+                                                    'k8s.container.name',
+                                                  ],
+                                                },
+                                              },
+                                            })
+                                            + otelcol.spec.config.withReceiversMixin({
+                                              filelog: {
+                                                include: [
+                                                  '/var/log/pods/*/*/*.log',
+                                                ],
+                                                exclude: [
+                                                  '/var/log/pods/*/otel-collector/*.log',
+                                                ],
+                                                start_at: 'end',
+                                                include_file_path: true,
+                                                include_file_name: false,
+                                                operators: [
+                                                  {
+                                                    type: 'container',
+                                                    id: 'container-parser',
+                                                  },
+                                                ],
+                                              },
+                                            })
+                                            + otelcol.spec.config.withProcessorsMixin({
+                                              batch: {},
+                                            })
+                                            + otelcol.spec.config.withProcessorsMixin({
+                                              memory_limiter: {
+                                                check_interval: '5s',
+                                                limit_percentage: 80,
+                                                spike_limit_percentage: 25,
+                                              },
+                                            })
+                                            + otelcol.spec.config.withExtensionsMixin({
+                                              health_check: {
+                                                endpoint: '0.0.0.0:13133',
+                                              },
+                                            })
+                                            + otelcol.spec.config.service.withPipelinesMixin({
+                                              logs: {
+                                                exporters: ['otlp_http/otelcol_gateway_internal'],
+                                                processors: ['memory_limiter', 'batch'],
+                                                receivers: ['filelog'],
+                                              },
+                                            }),
   },
 }

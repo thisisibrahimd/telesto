@@ -73,6 +73,7 @@ gen-libsonnet-libraries:
 	k8s-gen generate k8s --config "./deploy/lib/argocd-crds/config.json"
 	k8s-gen generate k8s --config "./deploy/lib/external-secrets-crds/config.json"
 	k8s-gen generate k8s --config "./deploy/lib/grafana-crds/config.json"
+	k8s-gen generate k8s --config "./deploy/lib/opentelemetry-operator-crds/config.json"
 	
 ## application
 ### go server
