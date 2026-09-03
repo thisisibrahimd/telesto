@@ -1,0 +1,14 @@
+{
+  "libName": "opentelemetry",
+  "description": "Generated Jsonnet library for OpenTelemetry Operator",
+  "specGenerator": {
+    "type": "github",
+    "repo": "https://github.com/open-telemetry/opentelemetry-operator",
+    "crdPath": "config/crd/bases",
+    "prefix": "^io\\.opentelemetry\\..*",
+    "versions": [
+      "0.158.0"
+    ]
+  },
+  "specs": []
+}
