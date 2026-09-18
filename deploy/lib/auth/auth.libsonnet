@@ -26,6 +26,9 @@ local secureGateway = import '../util/secure_gateway.libsonnet';
 local certs = import '../util/certs.libsonnet';
 local issuers = import '../util/issuers.libsonnet';
 
+local po = import '../prometheus-operator-crds/0.94.0/main.libsonnet';
+local serviceMonitor = po.monitoring.v1.serviceMonitor;
+
 {
   _config:: {
     _global: {
@@ -227,7 +230,9 @@ local issuers = import '../util/issuers.libsonnet';
         },
         config: {
           log: {
-            leak_sensitive_values: true,
+            level: 'info',
+            format: 'json',
+            leak_sensitive_values: false,
           },
           dsn: 'postgres://kratos@auth-db-cluster-rw.auth:5432/kratos?sslmode=verify-full&sslrootcert=/etc/secrets/db/ca.crt&sslcert=/etc/secrets/db/tls.crt&sslkey=/etc/secrets/db/tls.key&max_conns=4&max_idle_conns=2',
           cookies: {
@@ -357,6 +362,17 @@ local issuers = import '../util/issuers.libsonnet';
     servicePort=443,
     caCertConfigMapName='bundle-telesto'
   ),
+  ngf_service_monitor: serviceMonitor.new('sm-kratos')
+                       + serviceMonitor.metadata.withNamespace($._config._global.namespace)
+                       + serviceMonitor.metadata.withLabelsMixin({ 'ops.telesto.com/target-allocator-instance': 'agent-internal' })
+                       + serviceMonitor.spec.namespaceSelector.withMatchNamesMixin($._config._global.namespace)
+                       + serviceMonitor.spec.selector.withMatchLabelsMixin({ 'app.kubernetes.io/name': 'kratos' })
+                       + serviceMonitor.spec.selector.withMatchLabelsMixin({ 'app.kubernetes.io/instance': 'auth' })
+                       + serviceMonitor.spec.withEndpointsMixin({
+                         port: 'http-metrics',
+                         path: '/metrics/prometheus',
+                         interval: '15s',
+                       }),
 
   // dex db
   dex: if $._config.dex.enabled then {

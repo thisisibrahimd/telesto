@@ -8,3 +8,7 @@ deploy/**/vendor/**
 
 .etchosts
 tmp
+
+# ignore k8s-gen output
+deploy/lib/*-crds/**
+!deploy/lib/*-crds/config.json

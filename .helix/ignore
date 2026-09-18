@@ -8,4 +8,5 @@ charts
 *_templ.go
 
 # hide generated or localized crds
-**/*crds/**
+**/*-crds/**
+!**/*-crds/config.json

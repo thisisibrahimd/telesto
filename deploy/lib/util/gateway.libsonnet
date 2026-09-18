@@ -46,6 +46,7 @@ local backendTLSPolicy = gw.gateway.v1.backendTLSPolicy;
       if kind == 'Issuer' then gateway.metadata.withAnnotationsMixin({ 'cert-manager.io/issuer': name })
       else if kind == 'ClusterIssuer' then gateway.metadata.withAnnotationsMixin({ 'cert-manager.io/cluster-issuer': name })
       else {},
+    withAltNames(names): gateway.metadata.withAnnotationsMixin({'cert-manager.io/alt-names': std.join(',', names)}),
   },
 
   httpRoute: {

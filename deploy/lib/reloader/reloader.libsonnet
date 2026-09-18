@@ -17,6 +17,13 @@ local helm = tanka.helm.new(std.thisFile);
         logFormat: 'json',
         reloadOnCreate: true,
         reloadOnDelete: true,
+        podMonitor: {
+          enabled: true,
+          namespace: $._config._global.namespace,
+          labels: {
+            'ops.telesto.com/target-allocator-instance': 'agent-internal',
+          },
+        },
       },
     },
   }),

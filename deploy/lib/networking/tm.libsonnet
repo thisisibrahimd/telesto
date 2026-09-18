@@ -13,7 +13,22 @@ local bundle = tm.trust.v1alpha1.bundle;
   },
   trustManager: helm.template('bundle', '../../charts/trust-manager', {
     namespace: $._config._global.namespace,
-    values: {},
+    values: {
+      app: {
+        logFormat: 'json',
+        metrics: {
+          service: {
+            servicemonitor: {
+              enabled: true,
+              labels: {
+                'ops.telesto.com/target-allocator-instance': 'agent-internal'
+              }
+              
+            }
+          }
+        }
+      }
+    },
   }),
   telestoBundle: bundle.new('bundle-telesto')
                  + bundle.spec.withSources([

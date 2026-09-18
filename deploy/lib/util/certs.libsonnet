@@ -16,7 +16,7 @@ local dnsutil = import '../../lib/util/dns.libsonnet';
   caSecretName(name):: 'cert-ca-' + name,
 
   usages:: {
-    server: certificate.spec.withUsagesMixin(['server auth']),
+    server: certificate.spec.withUsagesMixin(['digital signature', 'key encipherment']),
     client: certificate.spec.withUsagesMixin(['client auth']),
 
   },
