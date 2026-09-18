@@ -47,10 +47,37 @@ local clusterIssuer = cm.nogroup.v1.clusterIssuer;
         kind: 'ControllerConfiguration',
         enableGatewayAPI: true,
       },
-      enableCertificateOwnerRef: false,
+      enableCertificateOwnerRef: true,
       crds: {
         enabled: true,
       },
+      extraArgs: [
+        '--logging-format=json',
+      ],
+      webhook: {
+        extraArgs: [
+          '--logging-format=json',
+        ],
+      },
+      cainjector: {
+        extraArgs: [
+          '--logging-format=json',
+        ],
+      },
+      startupapicheck: {
+        extraArgs: [
+          '--logging-format=json',
+        ],
+      },
+      prometheus: {
+        servicemonitor: {
+          enabled: true,
+          labels: {
+            'ops.telesto.com/target-allocator-instance': 'agent-internal',
+          }
+        }
+      }
+
     },
   }),
   clusterIssuer: clusterIssuer.new($._config.clusterIssuerName)

@@ -1,0 +1,14 @@
+{
+  "libName": "prometheus",
+  "description": "Generated Jsonnet library for Prometheus Operator",
+  "specGenerator": {
+    "type": "github",
+    "repo": "https://github.com/prometheus-operator/prometheus-operator",
+    "crdPath": "example/prometheus-operator-crd",
+    "prefix": "^com\\.coreos\\.monitoring.*",
+    "versions": [
+      "0.94.0"
+    ]
+  },
+  "specs": []
+}

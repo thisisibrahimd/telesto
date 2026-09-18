@@ -13,6 +13,9 @@ local gateway = gw.gateway.v1.gateway;
 
 local gwutil = import '../util/gateway.libsonnet';
 
+local po = import '../prometheus-operator-crds/0.94.0/main.libsonnet';
+local serviceMonitor = po.monitoring.v1.serviceMonitor;
+
 {
   _config:: {
     _global: {
@@ -69,17 +72,50 @@ local gwutil = import '../util/gateway.libsonnet';
                   ])
                   + certificate.spec.withDnsNames('*.cluster.local')  // unique
                   + self.issuerNginxGatewayRef,
-  // TODO: libsonnetify helm values
   ngf: helm.template('ngf', '../../charts/nginx-gateway-fabric', {
     namespace: $._config._global.namespace,
     values: {
+      nginxGateway: {
+        metrics: {
+          enable: true,
+          // serviceMonitor: {
+          //   enable: true,
+          //   labels: {
+          //     'ops.telesto.com/target-allocator-instance': 'agent-internal',
+          //   },
+          // },
+        },
+        productTelemetry: {
+          enable: false,
+        },
+      },
       nginx: {
+        config: {
+          metrics: {
+            disable: false,
+          },
+        },
+        // serviceMonitor: {
+        //   enable: true,
+        // },
         service: {
           type: 'LoadBalancer',
         },
       },
     },
   }),
+
+  ngf_service_monitor: serviceMonitor.new('sm-nginx-gateway-fabric')
+                       + serviceMonitor.metadata.withNamespace($._config._global.namespace)
+                       + serviceMonitor.metadata.withLabelsMixin({ 'ops.telesto.com/target-allocator-instance': 'agent-internal' })
+                       + serviceMonitor.spec.namespaceSelector.withMatchNamesMixin($._config._global.namespace)
+                       + serviceMonitor.spec.selector.withMatchLabelsMixin({ 'app.kubernetes.io/name': 'nginx-gateway-fabric' })
+                       + serviceMonitor.spec.selector.withMatchLabelsMixin({ 'app.kubernetes.io/instance': 'ngf' })
+                       + serviceMonitor.spec.withEndpointsMixin({
+                         port: 'metrics',
+                         interval: '15s',
+                       }),
+
 
   // // gateways
   // // app gateway for applications exposed to customers

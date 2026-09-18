@@ -189,6 +189,7 @@ local service = k.core.v1.service;
               + tc.server.private.tls.withKey('/etc/certs/server/private/tls.key')
               + tc.server.private.telestoDeployer.withToken($._config.telesto.config.server.private.telestoDeployer.token)
               + tc.server.private.externalSecrets.withToken($._config.telesto.config.server.private.externalSecrets.token)
+              + tc.telemetry.log.withFormat('json')
             )),
           })
           + k.core.v1.secret.metadata.withNamespace($._config._global.namespace),

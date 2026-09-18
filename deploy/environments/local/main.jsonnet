@@ -7,7 +7,6 @@ local tc = import '../../lib/telesto-config/config.libsonnet';
 local _namespaces = [
   'argocd',
   'app',
-  'storage',
   'monitoring',
   'auth',
   'nginx-gateway',
@@ -89,7 +88,7 @@ local secrets = std.parseJson(secretsJson);
   telesto: telesto {
     _config+:: {
       _global: {
-        namespace: 'app',
+        namespace+: 'app',
       },
       issuerRefName: $.ca._config.clusterIssuerName,
       telesto+: {

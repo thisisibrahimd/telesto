@@ -1,9 +1,5 @@
 # AGENTS.md
 
-## Agent scope
-
-- OpenCode is used like Google for research and as a UI engineer due to limited CSS/design skills — never for backend code, infrastructure/deployment manifests, scripts, or similar artifacts.
-
 ## Toolchain
 
 - `mise` manages Go 1.25.8, golangci-lint 2.6.1, k8s-gen, cloud-provider-kind, and hostctl (see `mise.toml`).

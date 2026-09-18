@@ -7,9 +7,16 @@ local certs = import '../util/certs.libsonnet';
 
 local grafanacrds = import '../grafana-crds/5.25.0/main.libsonnet';
 local grafana = grafanacrds.grafana.v1beta1.grafana;
+local grafanaFolder = grafanacrds.grafana.v1beta1.grafanaFolder;
+local grafanaDashboard = grafanacrds.grafana.v1beta1.grafanaDashboard;
 local datasource = grafanacrds.grafana.v1beta1.grafanaDatasource;
 
 local secureGateway = import '../util/secure_gateway.libsonnet';
+
+
+local po = import '../prometheus-operator-crds/0.94.0/main.libsonnet';
+local podMonitor = po.monitoring.v1.podMonitor;
+local serviceMonitor = po.monitoring.v1.serviceMonitor;
 
 {
   _config:: {
@@ -25,21 +32,55 @@ local secureGateway = import '../util/secure_gateway.libsonnet';
     grafana_operator_helm: helm.template('goperator', '../../charts/grafana-operator', {
       skipTests: true,
       namespace: $._config._global.namespace,
-      values: {},
+      values: {
+        logging: {
+          encoder: 'json',
+        },
+        annotations: {
+          'reloader.stakater.com/auto': 'true',
+        },
+        serviceMonitor: {
+          enabled: true,
+          additionalLabels: {
+            'ops.telesto.com/target-allocator-instance': 'agent-internal',
+          },
+        },
+        manager: {
+          config: {
+            zap: {
+              encoder: 'json',
+              'level-format': 'json',
+            },
+          },
+        },
+        dashboard: {
+          enabled: true,
+          labels: {
+            instance: 'internal',
+          },
+        },
+      },
     }),
+    grafana_operator_dashboard: grafanaDashboard.new('d-grafana-operator-dashboard')
+                                + grafanaDashboard.metadata.withNamespace($._config._global.namespace)
+                                + grafanaDashboard.spec.withAllowCrossNamespaceImport(true)
+                                + grafanaDashboard.spec.instanceSelector.withMatchLabelsMixin({ instance: 'internal' })
+                                + grafanaDashboard.spec.withFolderUID('infra')
+                                + grafanaDashboard.spec.configMapRef.withName('goperator-grafana-operator-dashboard')
+                                + grafanaDashboard.spec.configMapRef.withKey('grafana-operator.json'),
   },
   grafana: {
-    grafana_internal_cert: certs.server.new(
-      name='grafana-internal',
-      namespace=$._config._global.namespace,
-      commonName='grafana-internal.' + $._config._global.namespace,
-      issuerRefName=$._config.issuerRefName,
-      issuerRefKind=$._config.issuerRefKind,
-    ),
+    // TODO: add json logging
     grafana_grafana: grafana.new('grafana-internal')
                      + grafana.metadata.withNamespace($._config._global.namespace)
                      + grafana.metadata.withLabelsMixin({
                        instance: 'internal',
+                     })
+                     + grafana.metadata.withLabelsMixin({
+                       'ops.telesto.com/grafana-instance': 'internal',
+                     })
+                     + grafana.metadata.withAnnotationsMixin({
+                       'reloader.stakater.com/auto': 'true',
                      })
                      + grafana.spec.withConfigMixin({
                        log: {
@@ -55,7 +96,7 @@ local secureGateway = import '../util/secure_gateway.libsonnet';
                      + grafana.spec.deployment.spec.template.spec.withVolumes({
                        name: 'cert-grafana',
                        secret: {
-                         secretName: 'cert-grafana-internal',
+                         secretName: 'tls-test-telesto-grafana',
                        },
                      })
                      + grafana.spec.deployment.spec.template.spec.withContainers(
@@ -78,7 +119,10 @@ local secureGateway = import '../util/secure_gateway.libsonnet';
       issuerRefKind=$._config.issuerRefKind,
       serviceName='grafana-internal-service',
       servicePort=3000,
-      caCertConfigMapName='bundle-telesto'
+      caCertConfigMapName='bundle-telesto',
+      extraDnsNames=[
+        'grafana-internal.monitoring',
+      ]
     ),
   },
   loki: {
@@ -95,12 +139,16 @@ local secureGateway = import '../util/secure_gateway.libsonnet';
         namespace: $._config._global.namespace,
         values: {
           loki: {
+            analytics: {
+              reporting_enabled: false,
+            },
             auth_enabled: false,
             commonConfig: {
               replication_factor: 1,
             },
             allow_structured_metadata: true,
             server: {
+              log_format: 'json',
               http_tls_config: {
                 cert_file: '/etc/certs/loki/tls.crt',
                 key_file: '/etc/certs/loki/tls.key',
@@ -142,6 +190,19 @@ local secureGateway = import '../util/secure_gateway.libsonnet';
           },
           lokiCanary: {
             enabled: false,
+          },
+
+          monitoring: {
+            serviceMonitor: {
+              enabled: true,
+              labels: {
+                'ops.telesto.com/target-allocator-instance': 'agent-internal',
+              },
+              scheme: 'https',
+              tlsConfig: {
+                insecureSkipVerify: true,
+              },
+            },
           },
 
           deploymentMode: 'Monolithic',
@@ -251,6 +312,7 @@ local secureGateway = import '../util/secure_gateway.libsonnet';
                        instance: 'internal',
                      })
                      + datasource.spec.datasource.withName('loki-internal')
+                     + datasource.spec.datasource.withUid('loki-internal')
                      + datasource.spec.datasource.withType('loki')
                      + datasource.spec.datasource.withAccess('proxy')
                      + datasource.spec.datasource.withUrl('https://loki-internal.monitoring:3100')
@@ -275,6 +337,9 @@ local secureGateway = import '../util/secure_gateway.libsonnet';
     mimir_config: configMap.new('mimir-internal-config', {
                     'mimir.yaml': std.manifestYamlDoc({
                       multitenancy_enabled: false,
+                      limits: {
+                        compactor_blocks_retention_period: '6h',
+                      },
                       blocks_storage: {
                         backend: 'filesystem',
                         bucket_store: {
@@ -288,6 +353,8 @@ local secureGateway = import '../util/secure_gateway.libsonnet';
                         },
                       },
                       compactor: {
+                        deletion_delay: '1h',
+                        compaction_interval: '30m',
                         data_dir: '/var/mimir/compactor',
                         sharding_ring: {
                           kvstore: {
@@ -325,6 +392,7 @@ local secureGateway = import '../util/secure_gateway.libsonnet';
                           key_file: '/etc/certs/mimir/tls.key',
                         },
                         log_level: 'info',
+                        log_format: 'json',
                       },
                       store_gateway: {
                         sharding_ring: {
@@ -337,7 +405,8 @@ local secureGateway = import '../util/secure_gateway.libsonnet';
     mimir_service: service.new(
                      'mimir-internal',
                      selector={
-                       app: 'mimir-internal',
+                       'app.kubernetes.io/name': 'mimir',
+                       'app.kubernetes.io/instance': 'mimir-internal',
                      },
                      ports=[
                        {
@@ -354,11 +423,16 @@ local secureGateway = import '../util/secure_gateway.libsonnet';
                        },
                      ]
                    )
-                   + service.metadata.withNamespace($._config._global.namespace),
+                   + service.metadata.withNamespace($._config._global.namespace)
+                   + service.metadata.withLabelsMixin({
+                     'app.kubernetes.io/name': 'mimir',
+                     'app.kubernetes.io/instance': 'mimir-internal',
+                   }),
     mimir_service_headless: service.new(
                               'mimir-internal-headless',
                               selector={
-                                app: 'mimir-internal',
+                                'app.kubernetes.io/name': 'mimir',
+                                'app.kubernetes.io/instance': 'mimir-internal',
                               },
                               ports=[
                                 {
@@ -376,7 +450,12 @@ local secureGateway = import '../util/secure_gateway.libsonnet';
                               ]
                             )
                             + service.metadata.withNamespace($._config._global.namespace)
-                            + service.spec.withClusterIP('None'),
+                            + service.spec.withClusterIP('None')
+                            + service.metadata.withLabelsMixin({
+                              'app.kubernetes.io/name': 'mimir',
+                              'app.kubernetes.io/instance': 'mimir-internal',
+                              variant: 'headless',
+                            }),
     mimir_container:: container.new('mimir-monolithic', 'docker.io/grafana/mimir:3.2.0')
                       + container.withArgs(['-target=all', '-config.file=/etc/mimir/mimir.yaml'])
                       + container.withPortsMixin({
@@ -420,9 +499,16 @@ local secureGateway = import '../util/secure_gateway.libsonnet';
                           replicas=1,
                           containers=$.mimir.mimir_container,
                           volumeClaims=$.mimir.mimir_volume_claim,
-                          podLabels={ app: 'mimir-internal' }
+                          podLabels={
+                            'app.kubernetes.io/name': 'mimir',
+                            'app.kubernetes.io/instance': 'mimir-internal',
+                          }
                         )
                         + statefulSet.metadata.withNamespace($._config._global.namespace)
+                        + statefulSet.metadata.withAnnotationsMixin({
+                          'checksum/config': std.sha256(std.toString($.mimir.mimir_config)),
+                          'reloader.stakater.com/auto': 'true',
+                        })
                         + statefulSet.spec.withServiceName('mimir-internal-headless')
                         + statefulSet.spec.template.spec.withVolumesMixin({
                           name: 'cert-mimir-internal',
@@ -440,13 +526,34 @@ local secureGateway = import '../util/secure_gateway.libsonnet';
                             }],
                           },
                         }),
-
+    mimir_service_monitor: serviceMonitor.new('sm-mimir-internal')
+                           + serviceMonitor.metadata.withNamespace($._config._global.namespace)
+                           + serviceMonitor.metadata.withLabelsMixin({ 'ops.telesto.com/target-allocator-instance': 'agent-internal' })
+                           + serviceMonitor.spec.namespaceSelector.withMatchNamesMixin($._config._global.namespace)
+                           + serviceMonitor.spec.selector.withMatchExpressionsMixin({
+                             key: 'variant',
+                             operator: 'DoesNotExist',
+                           })
+                           + serviceMonitor.spec.selector.withMatchLabelsMixin({
+                             'app.kubernetes.io/name': 'mimir',
+                             'app.kubernetes.io/instance': 'mimir-internal',
+                           })
+                           + serviceMonitor.spec.withEndpointsMixin({
+                             port: 'http-metrics',
+                             path: '/metrics',
+                             scheme: 'https',
+                             tlsConfig: {
+                               insecureSkipVerify: true,
+                             },
+                             interval: '15s',
+                           }),
     mimir_datasource: datasource.new('gd-mimir-internal')
                       + datasource.metadata.withNamespace($._config._global.namespace)
                       + datasource.spec.instanceSelector.withMatchLabelsMixin({
                         instance: 'internal',
                       })
                       + datasource.spec.datasource.withName('mimir-internal')
+                      + datasource.spec.datasource.withUid('mimir-internal')
                       + datasource.spec.datasource.withType('prometheus')
                       + datasource.spec.datasource.withAccess('proxy')
                       + datasource.spec.datasource.withUrl('https://mimir-internal.monitoring:9009/prometheus')
@@ -472,12 +579,15 @@ local secureGateway = import '../util/secure_gateway.libsonnet';
       namespace: $._config._global.namespace,
       values: {
         tempo: {
+          reportingEnabled: false,
           server: {
+            log_format: 'json',
             http_tls_config: {
               cert_file: '/etc/certs/tempo/tls.crt',
               key_file: '/etc/certs/tempo/tls.key',
             },
           },
+          retention: '6h',
           readinessProbe: {
             httpGet: {
               scheme: 'HTTPS',
@@ -508,12 +618,27 @@ local secureGateway = import '../util/secure_gateway.libsonnet';
         }],
       },
     }),
+    tempo_service_monitor: serviceMonitor.new('sm-tempo-internal')
+                           + serviceMonitor.metadata.withNamespace($._config._global.namespace)
+                           + serviceMonitor.metadata.withLabelsMixin({ 'ops.telesto.com/target-allocator-instance': 'agent-internal' })
+                           + serviceMonitor.spec.namespaceSelector.withMatchNamesMixin($._config._global.namespace)
+                           + serviceMonitor.spec.selector.withMatchLabelsMixin({ 'app.kubernetes.io/name': 'tempo' })
+                           + serviceMonitor.spec.selector.withMatchLabelsMixin({ 'app.kubernetes.io/instance': 'tempo-internal' })
+                           + serviceMonitor.spec.withEndpointsMixin({
+                             port: 'tempo-prom-metrics',
+                             scheme: 'https',
+                             tlsConfig: {
+                               insecureSkipVerify: true,
+                             },
+                             interval: '15s',
+                           }),
     tempo_datasource: datasource.new('gd-tempo-internal')
                       + datasource.metadata.withNamespace($._config._global.namespace)
                       + datasource.spec.instanceSelector.withMatchLabelsMixin({
                         instance: 'internal',
                       })
                       + datasource.spec.datasource.withName('tempo-internal')
+                      + datasource.spec.datasource.withUid('tempo-internal')
                       + datasource.spec.datasource.withType('tempo')
                       + datasource.spec.datasource.withAccess('proxy')
                       + datasource.spec.datasource.withUrl('https://tempo-internal.monitoring:3200')
@@ -523,6 +648,9 @@ local secureGateway = import '../util/secure_gateway.libsonnet';
                         serviceMap: {
                           datasourceUid: 'mimir-internal',
                         },
+                        spanMetrics: {
+                          datasourceUid: 'mimir-internal',
+                        },
                         nodeGraph: {
                           enabled: true,
                         },
@@ -530,6 +658,38 @@ local secureGateway = import '../util/secure_gateway.libsonnet';
   },
 
   opentelemetry_operator: {
+    prometheus_operator_crds_helm: helm.template('prometheus-crds', '../../charts/prometheus-operator-crds', {
+      skipTests: true,
+      namespace: $._config._global.namespace,
+      values: {
+        crds: {
+          alertmanagerconfigs: {
+            enabled: false,
+          },
+          alertmanagers: {
+            enabled: false,
+          },
+          probes: {
+            enabled: false,
+          },
+          prometheusagents: {
+            enabled: false,
+          },
+          prometheuses: {
+            enabled: false,
+          },
+          prometheusrules: {
+            enabled: false,
+          },
+          scrapeconfigs: {
+            enabled: false,
+          },
+          thanosrulers: {
+            enabled: false,
+          },
+        },
+      },
+    }),
     opentelemetry_operator_helm: helm.template('otel-op-internal', '../../charts/opentelemetry-operator', {
       skipTests: true,
       namespace: $._config._global.namespace,
@@ -542,6 +702,30 @@ local secureGateway = import '../util/secure_gateway.libsonnet';
           targetAllocatorImage: {
             repository: 'ghcr.io/open-telemetry/opentelemetry-operator/target-allocator',
             tag: '0.158.0',
+          },
+          metrics: {
+            secure: false,
+          },
+          config: {
+            zap: {
+              'level-format': 'json',
+              encoder: 'json',
+            },
+          },
+          serviceMonitor: {
+            enabled: true,
+            extraLabels: {
+              'ops.telesto.com/target-allocator-instance': 'agent-internal',
+            },
+            metricsEndpoints: [
+              {
+                port: 'metrics',
+                scheme: 'http',
+              },
+            ],
+          },
+          prometheusRule: {
+            enabled: false,
           },
         },
         admissionWebhooks: {
@@ -611,6 +795,16 @@ local secureGateway = import '../util/secure_gateway.libsonnet';
                                                   },
                                                 },
                                               })
+                                              + otelcol.spec.config.withConnectorsMixin({
+                                                span_metrics: {
+                                                  exemplars: {
+                                                    enabled: true,
+                                                  },
+                                                },
+                                              })
+                                              + otelcol.spec.config.withConnectorsMixin({
+                                                service_graph: {},
+                                              })
                                               + otelcol.spec.config.withReceiversMixin({
                                                 filelog: {
                                                   include: [
@@ -633,6 +827,13 @@ local secureGateway = import '../util/secure_gateway.libsonnet';
                                               + otelcol.spec.config.withReceiversMixin({
                                                 'otlp/gateway_internal': {
                                                   protocols: {
+                                                    grpc: {
+                                                      endpoint: '0.0.0.0:4317',
+                                                      tls: {
+                                                        cert_file: '/etc/certs/otelcol-gateway-internal/tls.crt',
+                                                        key_file: '/etc/certs/otelcol-gateway-internal/tls.key',
+                                                      },
+                                                    },
                                                     http: {
                                                       endpoint: '0.0.0.0:4318',
                                                       tls: {
@@ -640,6 +841,21 @@ local secureGateway = import '../util/secure_gateway.libsonnet';
                                                         key_file: '/etc/certs/otelcol-gateway-internal/tls.key',
                                                       },
                                                     },
+                                                  },
+                                                },
+                                              })
+                                              + otelcol.spec.config.withReceiversMixin({
+                                                prometheus: {
+                                                  config: {
+                                                    scrape_configs: [
+                                                      {
+                                                        job_name: 'otelcol-gateway-self',
+                                                        scrape_interval: '10s',
+                                                        static_configs: [
+                                                          { targets: ['127.0.0.1:8888'] },
+                                                        ],
+                                                      },
+                                                    ],
                                                   },
                                                 },
                                               })
@@ -653,6 +869,11 @@ local secureGateway = import '../util/secure_gateway.libsonnet';
                                                   spike_limit_percentage: 25,
                                                 },
                                               })
+                                              + otelcol.spec.config.service.withTelemetryMixin({
+                                                metrics: {
+                                                  level: 'normal',
+                                                },
+                                              })
                                               + otelcol.spec.config.withExtensionsMixin({
                                                 health_check: {
                                                   endpoint: '0.0.0.0:13133',
@@ -660,25 +881,109 @@ local secureGateway = import '../util/secure_gateway.libsonnet';
                                               })
                                               + otelcol.spec.config.service.withPipelinesMixin({
                                                 logs: {
-                                                  exporters: ['otlp_http/loki_internal'],
-                                                  processors: ['memory_limiter', 'batch'],
                                                   receivers: ['otlp/gateway_internal'],
+                                                  processors: ['memory_limiter', 'batch'],
+                                                  exporters: ['otlp_http/loki_internal'],
                                                 },
                                               })
                                               + otelcol.spec.config.service.withPipelinesMixin({
                                                 metrics: {
-                                                  exporters: ['otlp_http/mimir_internal'],
+                                                  receivers: ['otlp/gateway_internal', 'span_metrics', 'service_graph', 'prometheus'],
                                                   processors: ['memory_limiter', 'batch'],
-                                                  receivers: ['otlp/gateway_internal'],
+                                                  exporters: ['otlp_http/mimir_internal'],
                                                 },
                                               })
                                               + otelcol.spec.config.service.withPipelinesMixin({
                                                 traces: {
-                                                  exporters: ['otlp_http/tempo_internal'],
-                                                  processors: ['memory_limiter', 'batch'],
                                                   receivers: ['otlp/gateway_internal'],
+                                                  processors: ['memory_limiter', 'batch'],
+                                                  exporters: ['otlp_http/tempo_internal', 'span_metrics', 'service_graph'],
                                                 },
                                               }),
+    otelcol_agent_collector_podmonitor:
+      podMonitor.new('otelcol-agent-internal')
+      + podMonitor.metadata.withNamespace($._config._global.namespace)
+      + podMonitor.metadata.withLabelsMixin({
+        'ops.telesto.com/target-allocator-instance': 'agent-internal',
+      })
+      + podMonitor.spec.namespaceSelector.withMatchNames([
+        $._config._global.namespace,
+      ])
+      + podMonitor.spec.selector.withMatchLabelsMixin({
+        'app.kubernetes.io/component': 'opentelemetry-collector',
+        'app.kubernetes.io/instance': 'monitoring.otelcol-agent-internal',
+        'app.kubernetes.io/managed-by': 'opentelemetry-operator',
+        'app.kubernetes.io/part-of': 'opentelemetry',
+      })
+      + podMonitor.spec.withPodMetricsEndpointsMixin([
+        {
+          port: 'metrics',
+          path: '/metrics',
+          interval: '15s',
+          scheme: 'http',
+        },
+      ]),
+    otelcol_agent_ta_role: k.rbac.v1.role.new('r-otelcol-agent-ta')
+                           + k.rbac.v1.role.metadata.withNamespace($._config._global.namespace)
+                           + k.rbac.v1.role.withRulesMixin({
+                             apiGroups: [''],
+                             resources: ['secrets'],
+                             verbs: ['get', 'list', 'watch'],
+                           }),
+    otelcol_agent_ta_role_binding: k.rbac.v1.roleBinding.new('rb-otelcol-agent-ta')
+                                   + k.rbac.v1.roleBinding.metadata.withNamespace($._config._global.namespace)
+                                   + k.rbac.v1.roleBinding.roleRef.withKind('Role')
+                                   + k.rbac.v1.roleBinding.roleRef.withName('r-otelcol-agent-ta')
+                                   + k.rbac.v1.roleBinding.roleRef.withApiGroup('rbac.authorization.k8s.io')
+                                   + k.rbac.v1.roleBinding.withSubjectsMixin({
+                                     kind: 'ServiceAccount',
+                                     name: 'otelcol-agent-internal-targetallocator',
+                                     namespace: 'monitoring',
+                                   }),
+    otelcol_agent_ta_cluster_role_binding: k.rbac.v1.clusterRoleBinding.new('crb-otelcol-agent-ta')
+                                           + k.rbac.v1.clusterRoleBinding.roleRef.withKind('ClusterRole')
+                                           + k.rbac.v1.clusterRoleBinding.roleRef.withName('cr-otelcol-agent-ta')
+                                           + k.rbac.v1.clusterRoleBinding.roleRef.withApiGroup('rbac.authorization.k8s.io')
+                                           + k.rbac.v1.clusterRoleBinding.withSubjectsMixin({
+                                             kind: 'ServiceAccount',
+                                             name: 'otelcol-agent-internal-targetallocator',
+                                             namespace: 'monitoring',
+                                           }),
+    otelcol_agent_ta_cluster_role: k.rbac.v1.clusterRole.new('cr-otelcol-agent-ta')
+                                   + k.rbac.v1.clusterRole.withRulesMixin({
+                                     apiGroups: [''],
+                                     resources: ['nodes', 'nodes/metrics', 'services', 'endpoints', 'pods'],
+                                     verbs: ['get', 'list', 'watch'],
+                                   })
+                                   + k.rbac.v1.clusterRole.withRulesMixin({
+                                     apiGroups: [''],
+                                     resources: ['configmaps'],
+                                     verbs: ['get'],
+                                   })
+                                   + k.rbac.v1.clusterRole.withRulesMixin({
+                                     apiGroups: ['discovery.k8s.io'],
+                                     resources: ['endpointslices'],
+                                     verbs: ['get', 'list', 'watch'],
+                                   })
+                                   + k.rbac.v1.clusterRole.withRulesMixin({
+                                     apiGroups: ['networking.k8s.io'],
+                                     resources: ['ingresses'],
+                                     verbs: ['get', 'list', 'watch'],
+                                   })
+                                   + k.rbac.v1.clusterRole.withRulesMixin({
+                                     nonResourceURLs: ['/metrics', '/api', '/apis/*', '/api/*', '/apis'],
+                                     verbs: ['get'],
+                                   })
+                                   + k.rbac.v1.clusterRole.withRulesMixin({
+                                     apiGroups: ['monitoring.coreos.com'],
+                                     resources: ['servicemonitors', 'podmonitors'],
+                                     verbs: ['*'],
+                                   })
+                                   + k.rbac.v1.clusterRole.withRulesMixin({
+                                     apiGroups: [''],
+                                     resources: ['namespaces'],
+                                     verbs: ['get', 'list', 'watch'],
+                                   }),
     otelcol_agent_internal_cert: certs.server.new(
       name='otelcol-agent-internal',
       namespace=$._config._global.namespace,
@@ -688,6 +993,16 @@ local secureGateway = import '../util/secure_gateway.libsonnet';
     ),
     opentelemetry_collector_agent_internal: otelcol.new('otelcol-agent-internal')
                                             + otelcol.metadata.withNamespace($._config._global.namespace)
+                                            + otelcol.spec.targetAllocator.withEnabled(true)
+                                            + otelcol.spec.targetAllocator.withAllocationStrategy('per-node')
+                                            + otelcol.spec.targetAllocator.prometheusCR.withEnabled(true)
+                                            + otelcol.spec.targetAllocator.prometheusCR.podMonitorSelector.withMatchLabelsMixin({ 'ops.telesto.com/target-allocator-instance': 'agent-internal' })
+                                            + otelcol.spec.targetAllocator.prometheusCR.serviceMonitorSelector.withMatchLabelsMixin({ 'ops.telesto.com/target-allocator-instance': 'agent-internal' })
+                                            + otelcol.spec.withTolerationsMixin({
+                                              key: 'node-role.kubernetes.io/control-plane',
+                                              operator: 'Exists',
+                                              effect: 'NoSchedule',
+                                            })
                                             + otelcol.spec.withMode('daemonset')
                                             + otelcol.spec.withVolumesMixin(
                                               otelcol.spec.volumes.withName('varlogpods')
@@ -736,12 +1051,16 @@ local secureGateway = import '../util/secure_gateway.libsonnet';
                                               },
                                             })
                                             + otelcol.spec.config.withReceiversMixin({
+                                              prometheus: {
+                                                config: {
+                                                  scrape_configs: [],
+                                                },
+                                              },
+                                            })
+                                            + otelcol.spec.config.withReceiversMixin({
                                               filelog: {
                                                 include: [
                                                   '/var/log/pods/*/*/*.log',
-                                                ],
-                                                exclude: [
-                                                  '/var/log/pods/*/otel-collector/*.log',
                                                 ],
                                                 start_at: 'end',
                                                 include_file_path: true,
@@ -775,6 +1094,23 @@ local secureGateway = import '../util/secure_gateway.libsonnet';
                                                 processors: ['memory_limiter', 'batch'],
                                                 receivers: ['filelog'],
                                               },
+                                            })
+                                            + otelcol.spec.config.service.withPipelinesMixin({
+                                              metrics: {
+                                                exporters: ['otlp_http/otelcol_gateway_internal'],
+                                                processors: ['memory_limiter', 'batch'],
+                                                receivers: ['prometheus'],
+                                              },
                                             }),
+  },
+
+  meta_monitoring: {
+    infra_folder: grafanaFolder.new('infra')
+                  + grafanaFolder.metadata.withNamespace($._config._global.namespace)
+                  + grafanaFolder.spec.withUid('infra')
+                  + grafanaFolder.spec.withAllowCrossNamespaceImport(true)
+                  + grafanaFolder.spec.instanceSelector.withMatchLabels({
+                    instance: 'internal',
+                  }),
   },
 }

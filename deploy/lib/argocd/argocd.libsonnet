@@ -58,6 +58,9 @@ local certs = import '../util/certs.libsonnet';
     namespace: $._config._global.namespace,
     values: {
       global: {
+        logging: {
+          format: 'json',
+        },
         networkPolicy: {
           create: false,
         },
@@ -83,9 +86,6 @@ local certs = import '../util/certs.libsonnet';
             readOnly: true,
           },
         ],
-      },
-      applicationSet: {
-        allowAnyNamespace: true,
       },
       configs: {
         cm: {
@@ -119,9 +119,66 @@ local certs = import '../util/certs.libsonnet';
         enabled: false,
       },
       server: {
+        metrics: {
+          enabled: true,
+          serviceMonitor: {
+            enabled: true,
+            additionalLabels: {
+              'ops.telesto.com/target-allocator-instance': 'agent-internal',
+            },
+          },
+        },
         httproute: {
           enabled: false,
         },
+      },
+      repoServer: {
+        metrics: {
+          enabled: true,
+          serviceMonitor: {
+            enabled: true,
+            additionalLabels: {
+              'ops.telesto.com/target-allocator-instance': 'agent-internal',
+            },
+          },
+        },
+
+      },
+      applicationSet: {
+        allowAnyNamespace: true,
+        metrics: {
+          enabled: true,
+          serviceMonitor: {
+            enabled: true,
+            additionalLabels: {
+              'ops.telesto.com/target-allocator-instance': 'agent-internal',
+            },
+          },
+        },
+      },
+      notifications: {
+        metrics: {
+          enabled: true,
+          serviceMonitor: {
+            enabled: true,
+            additionalLabels: {
+              'ops.telesto.com/target-allocator-instance': 'agent-internal',
+            },
+          },
+        },
+
+      },
+      controller: {
+        metrics: {
+          enabled: true,
+          serviceMonitor: {
+            enabled: true,
+            additionalLabels: {
+              'ops.telesto.com/target-allocator-instance': 'agent-internal',
+            },
+          },
+        },
+
       },
     },
   }),

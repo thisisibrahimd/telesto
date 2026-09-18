@@ -22,6 +22,8 @@ repositories:
   url: oci://ghcr.io/grafana-community/helm-charts
 - name: open-telemetry
   url: https://open-telemetry.github.io/opentelemetry-helm-charts
+- name: prometheus-community
+  url: https://prometheus-community.github.io/helm-charts
 requires:
 - chart: jetstack/cert-manager
   version: v1.21.1
@@ -34,7 +36,7 @@ requires:
 - chart: cnpg/cluster
   version: 0.8.1
 - chart: nginx/nginx-gateway-fabric
-  version: 2.6.7
+  version: 2.7.0
 - chart: dex/dex
   version: 0.24.1
 - chart: external-secrets/external-secrets
@@ -51,4 +53,6 @@ requires:
   version: 2.3.0
 - chart: open-telemetry/opentelemetry-operator
   version: 0.122.0
+- chart: prometheus-community/prometheus-operator-crds
+  version: 32.0.0
 version: 1
