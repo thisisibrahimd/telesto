@@ -23,6 +23,9 @@ receivers:
           authenticator: bearertokenauth/telestotokenauth
         endpoint: ${env:MY_POD_IP}:4318
 service:
+  telemetry:
+    logs:
+      encoding: json
   extensions:
   - health_check
   
