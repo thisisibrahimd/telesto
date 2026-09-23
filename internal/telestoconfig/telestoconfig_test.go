@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/sebdah/goldie/v2"
-	"github.com/thisisibrahimd/telesto/internal/storage/model"
+	"github.com/thisisibrahimd/telesto/internal/model"
 	"github.com/thisisibrahimd/telesto/internal/telestoconfig"
 )
 

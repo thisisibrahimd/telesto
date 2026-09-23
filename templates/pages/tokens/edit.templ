@@ -9,7 +9,7 @@ templ Edit(token TokenModel) {
 		</div>
 		<div class="max-w-lg bg-white rounded-lg shadow p-6">
 			<h2 class="text-2xl font-bold text-gray-900 mb-6">Edit Token</h2>
-			<form hx-put={ "/tokens/edit/" + token.ID } hx-target="body" class="space-y-4">
+			<form hx-put={ "/tokens/" + token.ID + "/edit" } hx-target="body" class="space-y-4">
 				@Form(TokenFormModel{
 					Name:        token.Name,
 					TelestoID:   token.TelestoID,

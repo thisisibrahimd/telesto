@@ -6,7 +6,6 @@ import (
 	"text/template"
 
 	"github.com/mdobak/go-xerrors"
-	"github.com/thisisibrahimd/telesto/internal/storage/model"
 )
 
 //go:embed telestoconfig.tmpl.yaml
@@ -15,7 +14,9 @@ var telestoConfigTemplateFile string
 var telestoConfigTemplate = template.Must(template.New("telesto-config").Parse(telestoConfigTemplateFile))
 
 type TemplateData struct {
-	Telesto *model.Telesto `json:"telesto"`
+	Endpoint            string `json:"endpoint"`
+	AuthorizationHeader string `json:"authorizatinHeader"`
+	TokensAvailable     bool   `json:"tokensAvailable"`
 }
 
 func Render(td *TemplateData) (string, error) {

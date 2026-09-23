@@ -7,7 +7,7 @@ package query
 import (
 	"context"
 
-	"github.com/thisisibrahimd/telesto/internal/storage/model"
+	"github.com/thisisibrahimd/telesto/internal/model"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"gorm.io/gorm/schema"

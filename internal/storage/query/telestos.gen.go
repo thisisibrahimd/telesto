@@ -7,7 +7,7 @@ package query
 import (
 	"context"
 
-	"github.com/thisisibrahimd/telesto/internal/storage/model"
+	"github.com/thisisibrahimd/telesto/internal/model"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"gorm.io/gorm/schema"
@@ -27,6 +27,8 @@ func newTelesto(db *gorm.DB) telesto {
 	_telesto.ID = field.NewString(tableName, "id")
 	_telesto.Name = field.NewString(tableName, "name")
 	_telesto.UserID = field.NewString(tableName, "user_id")
+	_telesto.DestinationURL = field.NewString(tableName, "destionation_url")
+	_telesto.AuthorizationHeader = field.NewString(tableName, "authorizationHeader")
 	_telesto.Tokens = telestoTokens{
 		db: db.Session(&gorm.Session{}),
 
@@ -54,11 +56,13 @@ func newTelesto(db *gorm.DB) telesto {
 type telesto struct {
 	telestoDo telestoDo
 
-	ALL    field.Field
-	ID     field.String
-	Name   field.String
-	UserID field.String
-	Tokens telestoTokens
+	ALL                 field.Field
+	ID                  field.String
+	Name                field.String
+	UserID              field.String
+	DestinationURL      field.String
+	AuthorizationHeader field.String
+	Tokens              telestoTokens
 
 	fieldMap map[string]field.Expr
 }
@@ -78,6 +82,8 @@ func (t *telesto) updateTableName(table string) *telesto {
 	t.ID = field.NewString(table, "id")
 	t.Name = field.NewString(table, "name")
 	t.UserID = field.NewString(table, "user_id")
+	t.DestinationURL = field.NewString(table, "destionation_url")
+	t.AuthorizationHeader = field.NewString(table, "authorizationHeader")
 
 	t.fillFieldMap()
 
@@ -100,10 +106,12 @@ func (t *telesto) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (t *telesto) fillFieldMap() {
-	t.fieldMap = make(map[string]field.Expr, 4)
+	t.fieldMap = make(map[string]field.Expr, 6)
 	t.fieldMap["id"] = t.ID
 	t.fieldMap["name"] = t.Name
 	t.fieldMap["user_id"] = t.UserID
+	t.fieldMap["destionation_url"] = t.DestinationURL
+	t.fieldMap["authorizationHeader"] = t.AuthorizationHeader
 
 }
 

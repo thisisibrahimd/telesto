@@ -8,7 +8,7 @@ package tokens
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "github.com/thisisibrahimd/telesto/internal/storage/model"
+import "github.com/thisisibrahimd/telesto/internal/model"
 
 type TokenModel struct {
 	ID        string

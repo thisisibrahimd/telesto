@@ -8,7 +8,6 @@ import (
 
 	"github.com/gorilla/schema"
 	"github.com/thisisibrahimd/telesto/internal/server/services"
-	"github.com/thisisibrahimd/telesto/internal/telestoconfig"
 )
 
 type TelestoHandler struct {
@@ -74,8 +73,7 @@ func (h *TelestoHandler) GetTelestoConfig(w http.ResponseWriter, r *http.Request
 	}
 
 	// render otelcol config template
-	telestoConfigTemplateData := telestoconfig.TemplateData{Telesto: telesto}
-	telestoConfig, err := telestoconfig.Render(&telestoConfigTemplateData)
+	tc, err := telesto.GenerateConfig()
 	if err != nil {
 		slog.Error("error creating telesto config", slog.Any("error", err))
 		http.Error(w, "failed", http.StatusInternalServerError)
@@ -84,7 +82,7 @@ func (h *TelestoHandler) GetTelestoConfig(w http.ResponseWriter, r *http.Request
 
 	// render
 	resp := &GetTelestoConfigResponse{
-		Config: telestoConfig,
+		Config: tc,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

@@ -102,7 +102,7 @@ local secrets = std.parseJson(secretsJson);
       },
     },
     _images+:: {
-      telesto: 'ghcr.io/thisisibrahimd/telesto:0.0.7-next-amd64',
+      telesto: 'ghcr.io/thisisibrahimd/telesto:0.1.4-next-amd64',
     },
   },
 

@@ -3,8 +3,44 @@ package telestos
 import "github.com/thisisibrahimd/telesto/templates/layouts"
 
 type TelestoModel struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID               string `json:"id"`
+	Name             string `json:"name"`
+	DestinationURL   string `json:"destinationUrl"`
+	AuthorizationSet bool   `json:"authorizationSet"`
+}
+
+func telemetrygenCommand(telestoID string) string {
+	return `telemetrygen traces \
+  --otlp-endpoint ` + telestoID + `.t.telesto.test:4318 \
+  --otlp-header 'Authorization="Bearer <TELESTO_AUTH_TOKEN>"' \
+  --traces 1 \
+  --otlp-http`
+}
+
+func envVarsCode(telestoID string) string {
+	return `export OTEL_EXPORTER_OTLP_ENDPOINT=https://` + telestoID + `.t.telesto.test:4318
+export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer ${TELESTO_AUTH_TOKEN}"`
+}
+
+func otlpConfigCode(telestoID string) string {
+	return `receivers:
+  ...
+
+processors:
+  ...
+
+exporters:
+  otlp_http/telesto:
+    endpoint: https://` + telestoID + `.t.telesto.test:4318
+    headers:
+      Authorization: "Bearer ${TELESTO_AUTH_TOKEN}"
+
+service:
+  pipelines:
+    traces:
+      receivers: [...]
+      processors: [...]
+      exporters: [otlp_http/telesto]`
 }
 
 templ Show(telesto TelestoModel) {
@@ -24,9 +60,75 @@ templ Show(telesto TelestoModel) {
 					<dd class="mt-1 text-sm text-gray-900">{ telesto.Name }</dd>
 				</div>
 			</dl>
+			<dl class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+				<div>
+					<dt class="text-sm font-medium text-gray-500">Destination URL</dt>
+					<dd class="mt-1 text-sm font-mono text-gray-900">{ telesto.DestinationURL }</dd>
+				</div>
+				<div>
+					<dt class="text-sm font-medium text-gray-500">Authorization Header</dt>
+					if telesto.AuthorizationSet {
+						<dd class="mt-1 text-sm font-mono text-gray-900">SET</dd>
+					} else {
+						<dd class="mt-1 text-sm font-mono text-gray-900">UNSET</dd>
+					}
+				</div>
+			</dl>
 			<div class="mt-6 flex items-center gap-3">
-				<a href={ "/telestos/edit/" + telesto.ID } class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors">Edit</a>
+				<a href={ "/telestos/" + telesto.ID + "/edit" } class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors">Edit</a>
 				<button hx-delete={ "/telestos/" + telesto.ID } hx-target="body" hx-confirm="Delete this Telesto?" class="inline-flex items-center px-4 py-2 text-sm font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">Delete</button>
+			</div>
+		</div>
+		<div class="bg-white rounded-lg shadow p-6 mt-6">
+			<h2 class="text-lg font-semibold text-gray-900 mb-4">Send Traces</h2>
+			<div x-data="{ tab: 'telemetrygen' }">
+				<div class="flex border-b border-gray-200 mb-4">
+					<button @click="tab = 'telemetrygen'"
+						:class="tab === 'telemetrygen' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+						class="px-4 py-2 text-sm font-medium border-b-2 transition-colors">
+						telemetrygen
+					</button>
+					<button @click="tab = 'otelcol'"
+						:class="tab === 'otelcol' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+						class="px-4 py-2 text-sm font-medium border-b-2 transition-colors">
+						otelcol
+					</button>
+					<button @click="tab = 'otel-instrumentation'"
+						:class="tab === 'otel-instrumentation' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+						class="px-4 py-2 text-sm font-medium border-b-2 transition-colors">
+						otel instrumentation
+					</button>
+				</div>
+				<div x-show="tab === 'telemetrygen'">
+					<div class="relative" x-data="{ copied: false }">
+						<button @click="copied = true; navigator.clipboard.writeText($refs.code.textContent); setTimeout(() => copied = false, 2000)"
+							class="absolute top-2 right-2 text-xs text-gray-500 hover:text-gray-700 bg-gray-200 rounded px-2 py-1 transition-colors">
+							<span x-show="!copied">Copy</span>
+							<span x-show="copied">Copied!</span>
+						</button>
+						<pre x-ref="code" class="bg-gray-50 rounded-lg p-4 pr-16 text-sm text-gray-900 whitespace-pre-wrap"><code>{ telemetrygenCommand(telesto.ID) }</code></pre>
+					</div>
+				</div>
+				<div x-show="tab === 'otelcol'">
+					<div class="relative" x-data="{ copied: false }">
+						<button @click="copied = true; navigator.clipboard.writeText($refs.code.textContent); setTimeout(() => copied = false, 2000)"
+							class="absolute top-2 right-2 text-xs text-gray-500 hover:text-gray-700 bg-gray-200 rounded px-2 py-1 transition-colors">
+							<span x-show="!copied">Copy</span>
+							<span x-show="copied">Copied!</span>
+						</button>
+						<pre x-ref="code" class="bg-gray-50 rounded-lg p-4 pr-16 text-sm text-gray-900 whitespace-pre-wrap"><code>{ otlpConfigCode(telesto.ID) }</code></pre>
+					</div>
+				</div>
+			<div x-show="tab === 'otel-instrumentation'">
+				<div class="relative" x-data="{ copied: false }">
+					<button @click="copied = true; navigator.clipboard.writeText($refs.code.textContent); setTimeout(() => copied = false, 2000)"
+						class="absolute top-2 right-2 text-xs text-gray-500 hover:text-gray-700 bg-gray-200 rounded px-2 py-1 transition-colors">
+						<span x-show="!copied">Copy</span>
+						<span x-show="copied">Copied!</span>
+					</button>
+					<pre x-ref="code" class="bg-gray-50 rounded-lg p-4 pr-16 text-sm text-gray-900 whitespace-pre-wrap"><code>{ envVarsCode(telesto.ID) }</code></pre>
+				</div>
+			</div>
 			</div>
 		</div>
 	}

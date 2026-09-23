@@ -8,9 +8,9 @@ import (
 
 	"github.com/gorilla/schema"
 	"github.com/jinzhu/copier"
+	"github.com/thisisibrahimd/telesto/internal/model"
 	"github.com/thisisibrahimd/telesto/internal/server/middlewares"
 	"github.com/thisisibrahimd/telesto/internal/server/services"
-	"github.com/thisisibrahimd/telesto/internal/storage/model"
 	"github.com/thisisibrahimd/telesto/internal/utils"
 	"github.com/thisisibrahimd/telesto/templates/pages/telestos"
 )
@@ -24,7 +24,7 @@ func newTelestoHandler(svcs *services.Services, sd *schema.Decoder) *TelestoHand
 	return &TelestoHandler{svcs: svcs, schemaDecoder: sd}
 }
 
-// ListTelestos implements [WebServerInterface].
+// GetTelestos implements [WebServerInterface].
 func (h *TelestoHandler) GetTelestos(w http.ResponseWriter, r *http.Request) {
 	// read input
 	userID := middlewares.GetUserID(r.Context())
@@ -102,7 +102,8 @@ func (h *TelestoHandler) NewTelesto(w http.ResponseWriter, r *http.Request) {
 }
 
 type NewTelestoForm struct {
-	Name string `json:"name" schema:"name,required"`
+	Name           string `json:"name" schema:"name,required"`
+	DestinationURL string `json:"destinationUrl" schema:"destinationUrl"`
 }
 
 // NewTelestoExec implements [WebServerInterface].
@@ -145,11 +146,15 @@ func (h *TelestoHandler) EditTelesto(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	telesto.AuthorizationHeader = ""
+
 	telestos.Edit(*convertTelesto(telesto)).Render(r.Context(), w)
 }
 
 type EditTelestoForm struct {
-	Name string `json:"name" schema:"name,required"`
+	Name                string `json:"name" schema:"name,required"`
+	DestinationURL      string `json:"destinationUrl" schema:"destinationUrl"`
+	AuthorizationHeader string `json:"authorizationHeader" schema:"authorizationHeader"`
 }
 
 // EditTelestoExec implements [WebServerInterface].
@@ -164,12 +169,17 @@ func (h *TelestoHandler) EditTelestoSubmit(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		return
 	}
+
 	var updatedTelestoForm EditTelestoForm
 	if err := h.schemaDecoder.Decode(&updatedTelestoForm, r.Form); err != nil {
 		return
 	}
 	updatedTelesto := &model.Telesto{
 		Name: updatedTelestoForm.Name,
+	}
+
+	if updatedTelestoForm.AuthorizationHeader != "" {
+		updatedTelesto.AuthorizationHeader = updatedTelestoForm.AuthorizationHeader
 	}
 
 	// do stuff
@@ -204,5 +214,8 @@ func (h *TelestoHandler) DeleteTelesto(w http.ResponseWriter, r *http.Request) {
 func convertTelesto(o *model.Telesto) *telestos.TelestoModel {
 	m := &telestos.TelestoModel{}
 	copier.Copy(m, o)
+
+	m.AuthorizationSet = o.AuthorizationHeader != ""
+
 	return m
 }

@@ -3,81 +3,14 @@ package repository
 import (
 	"context"
 
-	"github.com/thisisibrahimd/telesto/internal/storage/model"
-	"github.com/thisisibrahimd/telesto/internal/storage/query"
-	"gorm.io/gen"
-	"gorm.io/gorm"
+	"github.com/thisisibrahimd/telesto/internal/model"
 )
 
-type ITokenRepo interface {
-	Repo[model.Token]
-	RepoByUser[model.Token]
-	RepoByTelesto[model.Token]
-	MarkSeen(ctx context.Context, id string) (gen.ResultInfo, error)
-}
-
-type TokenRepo struct {
-	db *gorm.DB
-}
-
-func (r *TokenRepo) query() *query.Query {
-	return query.Use(r.db)
-}
-
-func (r *TokenRepo) ByTelesto(id string) Repo[model.Token] {
-	return NewTokenRepo(r.db.Scopes(func(d *gorm.DB) *gorm.DB {
-		return d.Where("telesto_id = ?", id)
-	}))
-}
-
-func (r *TokenRepo) ByUser(id string) Repo[model.Token] {
-	return NewTokenRepo(r.db.Scopes(func(d *gorm.DB) *gorm.DB {
-		return d.Where("user_id = ?", id)
-	}))
-}
-
-func (r *TokenRepo) GetAll(ctx context.Context) ([]*model.Token, error) {
-	return r.query().
-		Token.WithContext(ctx).
-		Preload(r.query().Token.Telesto).
-		Find()
-}
-
-func (r *TokenRepo) Get(ctx context.Context, id string) (*model.Token, error) {
-	return r.query().
-		Token.WithContext(ctx).
-		Where(r.query().Token.ID.Eq(id)).
-		Preload(r.query().Token.Telesto).
-		First()
-}
-
-func (r *TokenRepo) New(ctx context.Context, otelcol *model.Token) error {
-	return r.query().
-		Token.WithContext(ctx).
-		Create(otelcol)
-}
-
-func (r *TokenRepo) Edit(ctx context.Context, id string, token *model.Token) (gen.ResultInfo, error) {
-	return r.query().
-		Token.WithContext(ctx).
-		Where(r.query().Token.ID.Eq(id)).
-		Updates(token)
-}
-
-func (r *TokenRepo) MarkSeen(ctx context.Context, id string) (gen.ResultInfo, error) {
-	return r.query().
-		Token.WithContext(ctx).
-		Where(r.query().Token.ID.Eq(id)).
-		Update(r.query().Token.Seen, true)
-}
-
-func (r *TokenRepo) Delete(ctx context.Context, id string) (gen.ResultInfo, error) {
-	return r.query().
-		Token.WithContext(ctx).
-		Where(r.query().Token.ID.Eq(id)).
-		Delete()
-}
-
-func NewTokenRepo(db *gorm.DB) ITokenRepo {
-	return &TokenRepo{db: db}
+type TokenRepo interface {
+	GetTokens(ctx context.Context) ([]*model.Token, error)
+	GetToken(ctx context.Context, id string) (*model.Token, error)
+	CreateToken(ctx context.Context, token *model.Token) error
+	UpdateToken(ctx context.Context, id string, token *model.Token) error
+	DeleteToken(ctx context.Context, id string) error
+	MarkTokenSeen(ctx context.Context, id string) error
 }

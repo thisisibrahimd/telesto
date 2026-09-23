@@ -1,9 +1,7 @@
 package model
 
 import (
-	"strings"
-
-	"github.com/oklog/ulid/v2"
+	"github.com/thisisibrahimd/telesto/internal/id"
 	"gorm.io/gorm"
 )
 
@@ -18,12 +16,7 @@ type Token struct {
 }
 
 func (t *Token) BeforeCreate(tx *gorm.DB) (err error) {
-	t.ID = strings.ToLower(ulid.Make().String())
-	return
-}
-
-func (t *Token) AfterFind(tx *gorm.DB) (err error) {
-	t.ID = strings.ToLower(t.ID)
+	t.ID = id.New()
 	return
 }
 
