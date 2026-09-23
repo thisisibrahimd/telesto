@@ -178,8 +178,3 @@ install-local-root-ca:
 	mkdir -p tmp
 	kubectl get secrets -n cert-manager cert-root-ca-telesto -o json | jq -r '.data.["tls.crt"]' | base64 -d > ./tmp/ca.crt
 	mkcert -install -cert-file ./tmp/ca.crt
-
-## util
-.PHONY: gen-token
-gen-token:
-	openssl rand -hex 32
