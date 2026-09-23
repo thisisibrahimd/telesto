@@ -83,6 +83,10 @@ gen-libsonnet-libraries:
 test:
 	go test ./...
 
+.PHONY: test-update-golden
+test-update-golden:
+	go test ./... -update
+
 .PHONY: gen-templates
 gen-templates:
 	find templates -name "*_templ.go" -delete
