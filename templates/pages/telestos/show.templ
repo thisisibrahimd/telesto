@@ -81,13 +81,8 @@ templ Show(telesto TelestoModel) {
 		</div>
 		<div class="bg-white rounded-lg shadow p-6 mt-6">
 			<h2 class="text-lg font-semibold text-gray-900 mb-4">Send Traces</h2>
-			<div x-data="{ tab: 'telemetrygen' }">
+			<div x-data="{ tab: 'otelcol' }">
 				<div class="flex border-b border-gray-200 mb-4">
-					<button @click="tab = 'telemetrygen'"
-						:class="tab === 'telemetrygen' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
-						class="px-4 py-2 text-sm font-medium border-b-2 transition-colors">
-						telemetrygen
-					</button>
 					<button @click="tab = 'otelcol'"
 						:class="tab === 'otelcol' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
 						class="px-4 py-2 text-sm font-medium border-b-2 transition-colors">
@@ -98,16 +93,11 @@ templ Show(telesto TelestoModel) {
 						class="px-4 py-2 text-sm font-medium border-b-2 transition-colors">
 						otel instrumentation
 					</button>
-				</div>
-				<div x-show="tab === 'telemetrygen'">
-					<div class="relative" x-data="{ copied: false }">
-						<button @click="copied = true; navigator.clipboard.writeText($refs.code.textContent); setTimeout(() => copied = false, 2000)"
-							class="absolute top-2 right-2 text-xs text-gray-500 hover:text-gray-700 bg-gray-200 rounded px-2 py-1 transition-colors">
-							<span x-show="!copied">Copy</span>
-							<span x-show="copied">Copied!</span>
-						</button>
-						<pre x-ref="code" class="bg-gray-50 rounded-lg p-4 pr-16 text-sm text-gray-900 whitespace-pre-wrap"><code>{ telemetrygenCommand(telesto.ID) }</code></pre>
-					</div>
+					<button @click="tab = 'telemetrygen'"
+						:class="tab === 'telemetrygen' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+						class="px-4 py-2 text-sm font-medium border-b-2 transition-colors">
+						telemetrygen
+					</button>
 				</div>
 				<div x-show="tab === 'otelcol'">
 					<div class="relative" x-data="{ copied: false }">
@@ -119,16 +109,26 @@ templ Show(telesto TelestoModel) {
 						<pre x-ref="code" class="bg-gray-50 rounded-lg p-4 pr-16 text-sm text-gray-900 whitespace-pre-wrap"><code>{ otlpConfigCode(telesto.ID) }</code></pre>
 					</div>
 				</div>
-			<div x-show="tab === 'otel-instrumentation'">
-				<div class="relative" x-data="{ copied: false }">
-					<button @click="copied = true; navigator.clipboard.writeText($refs.code.textContent); setTimeout(() => copied = false, 2000)"
-						class="absolute top-2 right-2 text-xs text-gray-500 hover:text-gray-700 bg-gray-200 rounded px-2 py-1 transition-colors">
-						<span x-show="!copied">Copy</span>
-						<span x-show="copied">Copied!</span>
-					</button>
-					<pre x-ref="code" class="bg-gray-50 rounded-lg p-4 pr-16 text-sm text-gray-900 whitespace-pre-wrap"><code>{ envVarsCode(telesto.ID) }</code></pre>
+				<div x-show="tab === 'otel-instrumentation'">
+					<div class="relative" x-data="{ copied: false }">
+						<button @click="copied = true; navigator.clipboard.writeText($refs.code.textContent); setTimeout(() => copied = false, 2000)"
+							class="absolute top-2 right-2 text-xs text-gray-500 hover:text-gray-700 bg-gray-200 rounded px-2 py-1 transition-colors">
+							<span x-show="!copied">Copy</span>
+							<span x-show="copied">Copied!</span>
+						</button>
+						<pre x-ref="code" class="bg-gray-50 rounded-lg p-4 pr-16 text-sm text-gray-900 whitespace-pre-wrap"><code>{ envVarsCode(telesto.ID) }</code></pre>
+					</div>
 				</div>
-			</div>
+				<div x-show="tab === 'telemetrygen'">
+					<div class="relative" x-data="{ copied: false }">
+						<button @click="copied = true; navigator.clipboard.writeText($refs.code.textContent); setTimeout(() => copied = false, 2000)"
+							class="absolute top-2 right-2 text-xs text-gray-500 hover:text-gray-700 bg-gray-200 rounded px-2 py-1 transition-colors">
+							<span x-show="!copied">Copy</span>
+							<span x-show="copied">Copied!</span>
+						</button>
+						<pre x-ref="code" class="bg-gray-50 rounded-lg p-4 pr-16 text-sm text-gray-900 whitespace-pre-wrap"><code>{ telemetrygenCommand(telesto.ID) }</code></pre>
+					</div>
+				</div>
 			</div>
 		</div>
 	}

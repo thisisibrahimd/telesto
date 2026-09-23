@@ -20,7 +20,7 @@ type TelestoModel struct {
 func telemetrygenCommand(telestoID string) string {
 	return `telemetrygen traces \
   --otlp-endpoint ` + telestoID + `.t.telesto.test:4318 \
-  --otlp-header 'Authorization="Bearer ${TELESTO_AUTH_TOKEN}"' \
+  --otlp-header 'Authorization="Bearer <TELESTO_AUTH_TOKEN>"' \
   --traces 1 \
   --otlp-http`
 }
@@ -164,40 +164,40 @@ func Show(telesto TelestoModel) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\" hx-target=\"body\" hx-confirm=\"Delete this Telesto?\" class=\"inline-flex items-center px-4 py-2 text-sm font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 transition-colors\">Delete</button></div></div><div class=\"bg-white rounded-lg shadow p-6 mt-6\"><h2 class=\"text-lg font-semibold text-gray-900 mb-4\">Send Traces</h2><div x-data=\"{ tab: 'telemetrygen' }\"><div class=\"flex border-b border-gray-200 mb-4\"><button @click=\"tab = 'telemetrygen'\" :class=\"tab === 'telemetrygen' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'\" class=\"px-4 py-2 text-sm font-medium border-b-2 transition-colors\">telemetrygen</button> <button @click=\"tab = 'otelcol'\" :class=\"tab === 'otelcol' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'\" class=\"px-4 py-2 text-sm font-medium border-b-2 transition-colors\">otelcol</button> <button @click=\"tab = 'otel-instrumentation'\" :class=\"tab === 'otel-instrumentation' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'\" class=\"px-4 py-2 text-sm font-medium border-b-2 transition-colors\">otel instrumentation</button></div><div x-show=\"tab === 'telemetrygen'\"><div class=\"relative\" x-data=\"{ copied: false }\"><button @click=\"copied = true; navigator.clipboard.writeText($refs.code.textContent); setTimeout(() => copied = false, 2000)\" class=\"absolute top-2 right-2 text-xs text-gray-500 hover:text-gray-700 bg-gray-200 rounded px-2 py-1 transition-colors\"><span x-show=\"!copied\">Copy</span> <span x-show=\"copied\">Copied!</span></button><pre x-ref=\"code\" class=\"bg-gray-50 rounded-lg p-4 pr-16 text-sm text-gray-900 whitespace-pre-wrap\"><code>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\" hx-target=\"body\" hx-confirm=\"Delete this Telesto?\" class=\"inline-flex items-center px-4 py-2 text-sm font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 transition-colors\">Delete</button></div></div><div class=\"bg-white rounded-lg shadow p-6 mt-6\"><h2 class=\"text-lg font-semibold text-gray-900 mb-4\">Send Traces</h2><div x-data=\"{ tab: 'otelcol' }\"><div class=\"flex border-b border-gray-200 mb-4\"><button @click=\"tab = 'otelcol'\" :class=\"tab === 'otelcol' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'\" class=\"px-4 py-2 text-sm font-medium border-b-2 transition-colors\">otelcol</button> <button @click=\"tab = 'otel-instrumentation'\" :class=\"tab === 'otel-instrumentation' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'\" class=\"px-4 py-2 text-sm font-medium border-b-2 transition-colors\">otel instrumentation</button> <button @click=\"tab = 'telemetrygen'\" :class=\"tab === 'telemetrygen' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'\" class=\"px-4 py-2 text-sm font-medium border-b-2 transition-colors\">telemetrygen</button></div><div x-show=\"tab === 'otelcol'\"><div class=\"relative\" x-data=\"{ copied: false }\"><button @click=\"copied = true; navigator.clipboard.writeText($refs.code.textContent); setTimeout(() => copied = false, 2000)\" class=\"absolute top-2 right-2 text-xs text-gray-500 hover:text-gray-700 bg-gray-200 rounded px-2 py-1 transition-colors\"><span x-show=\"!copied\">Copy</span> <span x-show=\"copied\">Copied!</span></button><pre x-ref=\"code\" class=\"bg-gray-50 rounded-lg p-4 pr-16 text-sm text-gray-900 whitespace-pre-wrap\"><code>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var8 string
-			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(telemetrygenCommand(telesto.ID))
+			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(otlpConfigCode(telesto.ID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/pages/telestos/show.templ`, Line: 109, Col: 145}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/pages/telestos/show.templ`, Line: 109, Col: 140}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</code></pre></div></div><div x-show=\"tab === 'otelcol'\"><div class=\"relative\" x-data=\"{ copied: false }\"><button @click=\"copied = true; navigator.clipboard.writeText($refs.code.textContent); setTimeout(() => copied = false, 2000)\" class=\"absolute top-2 right-2 text-xs text-gray-500 hover:text-gray-700 bg-gray-200 rounded px-2 py-1 transition-colors\"><span x-show=\"!copied\">Copy</span> <span x-show=\"copied\">Copied!</span></button><pre x-ref=\"code\" class=\"bg-gray-50 rounded-lg p-4 pr-16 text-sm text-gray-900 whitespace-pre-wrap\"><code>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</code></pre></div></div><div x-show=\"tab === 'otel-instrumentation'\"><div class=\"relative\" x-data=\"{ copied: false }\"><button @click=\"copied = true; navigator.clipboard.writeText($refs.code.textContent); setTimeout(() => copied = false, 2000)\" class=\"absolute top-2 right-2 text-xs text-gray-500 hover:text-gray-700 bg-gray-200 rounded px-2 py-1 transition-colors\"><span x-show=\"!copied\">Copy</span> <span x-show=\"copied\">Copied!</span></button><pre x-ref=\"code\" class=\"bg-gray-50 rounded-lg p-4 pr-16 text-sm text-gray-900 whitespace-pre-wrap\"><code>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var9 string
-			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(otlpConfigCode(telesto.ID))
+			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(envVarsCode(telesto.ID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/pages/telestos/show.templ`, Line: 119, Col: 140}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/pages/telestos/show.templ`, Line: 119, Col: 137}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</code></pre></div></div><div x-show=\"tab === 'otel-instrumentation'\"><div class=\"relative\" x-data=\"{ copied: false }\"><button @click=\"copied = true; navigator.clipboard.writeText($refs.code.textContent); setTimeout(() => copied = false, 2000)\" class=\"absolute top-2 right-2 text-xs text-gray-500 hover:text-gray-700 bg-gray-200 rounded px-2 py-1 transition-colors\"><span x-show=\"!copied\">Copy</span> <span x-show=\"copied\">Copied!</span></button><pre x-ref=\"code\" class=\"bg-gray-50 rounded-lg p-4 pr-16 text-sm text-gray-900 whitespace-pre-wrap\"><code>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</code></pre></div></div><div x-show=\"tab === 'telemetrygen'\"><div class=\"relative\" x-data=\"{ copied: false }\"><button @click=\"copied = true; navigator.clipboard.writeText($refs.code.textContent); setTimeout(() => copied = false, 2000)\" class=\"absolute top-2 right-2 text-xs text-gray-500 hover:text-gray-700 bg-gray-200 rounded px-2 py-1 transition-colors\"><span x-show=\"!copied\">Copy</span> <span x-show=\"copied\">Copied!</span></button><pre x-ref=\"code\" class=\"bg-gray-50 rounded-lg p-4 pr-16 text-sm text-gray-900 whitespace-pre-wrap\"><code>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var10 string
-			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(envVarsCode(telesto.ID))
+			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(telemetrygenCommand(telesto.ID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/pages/telestos/show.templ`, Line: 129, Col: 136}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/pages/telestos/show.templ`, Line: 129, Col: 145}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
