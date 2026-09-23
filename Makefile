@@ -89,7 +89,7 @@ gen-templates:
 	templ generate
 
 .PHONY: build
-build:
+build: gen-templates gen-query
 	goreleaser release --snapshot --clean
 	if [ "$(LOAD_CONTAINER_IMAGE)" = "true" ]; \
 	then \
@@ -171,6 +171,7 @@ sops-decrypt:
 .PHONY: sops-edit
 sops-edit:
 	$(SOPS_AGE_KEY_FILE_ENV) sops --edit $(SOPS_FILE)
+
 
 .PHONY: install-local-root-ca
 install-local-root-ca:
