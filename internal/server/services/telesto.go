@@ -3,25 +3,22 @@ package services
 import (
 	"context"
 
-	"github.com/thisisibrahimd/telesto/internal/storage/model"
-	"github.com/thisisibrahimd/telesto/internal/storage/repository"
+	"github.com/thisisibrahimd/telesto/internal/model"
+	"github.com/thisisibrahimd/telesto/internal/storage"
 )
 
-type ITelestoService interface {
-	Service[model.Telesto]
-	ServiceByUser[model.Telesto]
-}
-
 type TelestoService struct {
-	repo repository.Repo[model.Telesto]
+	sto *storage.Storage
 }
 
-func (s *TelestoService) ByUser(id string) Service[model.Telesto] {
-	return &TelestoService{repo: s.repo.(repository.ITelestoRepo).ByUser(id)}
+func (s *TelestoService) ByUser(id string) *TelestoService {
+	return &TelestoService{
+		sto: s.sto.ForUser(id),
+	}
 }
 
 func (s *TelestoService) GetAll(ctx context.Context) ([]*model.Telesto, error) {
-	telestos, err := s.repo.GetAll(ctx)
+	telestos, err := s.sto.GetTelestos(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -30,7 +27,7 @@ func (s *TelestoService) GetAll(ctx context.Context) ([]*model.Telesto, error) {
 }
 
 func (s *TelestoService) Get(ctx context.Context, id string) (*model.Telesto, error) {
-	telesto, err := s.repo.Get(ctx, id)
+	telesto, err := s.sto.GetTelesto(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +36,7 @@ func (s *TelestoService) Get(ctx context.Context, id string) (*model.Telesto, er
 }
 
 func (s *TelestoService) GetTokens(ctx context.Context, id string) ([]model.Token, error) {
-	telesto, err := s.repo.Get(ctx, id)
+	telesto, err := s.sto.GetTelesto(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -48,11 +45,11 @@ func (s *TelestoService) GetTokens(ctx context.Context, id string) ([]model.Toke
 }
 
 func (s *TelestoService) Create(ctx context.Context, t *model.Telesto) error {
-	return s.repo.New(ctx, t)
+	return s.sto.CreateTelesto(ctx, t)
 }
 
 func (s *TelestoService) Update(ctx context.Context, id string, t *model.Telesto) error {
-	if _, err := s.repo.Edit(ctx, id, t); err != nil {
+	if err := s.sto.UpdateTelesto(ctx, id, t); err != nil {
 		return err
 	}
 
@@ -60,12 +57,12 @@ func (s *TelestoService) Update(ctx context.Context, id string, t *model.Telesto
 }
 
 func (s *TelestoService) Delete(ctx context.Context, id string) error {
-	if _, err := s.repo.Delete(ctx, id); err != nil {
+	if err := s.sto.DeleteTelesto(ctx, id); err != nil {
 		return err
 	}
 	return nil
 }
 
-func newTelestoService(repo repository.Repo[model.Telesto]) ITelestoService {
-	return &TelestoService{repo: repo}
+func newTelestoService(sto *storage.Storage) *TelestoService {
+	return &TelestoService{sto: sto}
 }

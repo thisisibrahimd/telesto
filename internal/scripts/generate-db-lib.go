@@ -3,7 +3,7 @@
 package main
 
 import (
-	"github.com/thisisibrahimd/telesto/internal/storage/model"
+	"github.com/thisisibrahimd/telesto/internal/model"
 	"gorm.io/gen"
 )
 

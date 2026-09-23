@@ -14,6 +14,12 @@ type ArgoHandler struct {
 
 // ExecuteParams POST /api/v1/getparams.execute
 func (h *ArgoHandler) POSTExecuteParams(w http.ResponseWriter, r *http.Request) {
+	type TelestoParameters struct {
+		ID              string `json:"id"`
+		Name            string `json:"name"`
+		TokensAvailable bool   `json:"tokensAvailable"`
+	}
+
 	// read input
 	type PluginInputParams struct {
 		Parameters map[string]any `json:"parameters"`
@@ -31,9 +37,21 @@ func (h *ArgoHandler) POSTExecuteParams(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// svc
-	telestoParams, err := h.svcs.Argo.ExecuteParams(r.Context())
+	telestos, err := h.svcs.Telesto.GetAll(r.Context())
 	if err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		slog.Error("error retriving telestos")
+		return
+		// return nil, xerrors.New("error retrieveing all telestos")
+	}
+
+	telestoParams := []*TelestoParameters{}
+	for _, telesto := range telestos {
+		telestoParam := &TelestoParameters{
+			ID:              telesto.ID,
+			Name:            telesto.Name,
+			TokensAvailable: len(telesto.Tokens) > 0,
+		}
+		telestoParams = append(telestoParams, telestoParam)
 	}
 
 	// render

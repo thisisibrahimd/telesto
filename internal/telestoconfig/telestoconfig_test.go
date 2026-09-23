@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/sebdah/goldie/v2"
-	"github.com/thisisibrahimd/telesto/internal/storage/model"
 	"github.com/thisisibrahimd/telesto/internal/telestoconfig"
 )
 
@@ -30,12 +29,12 @@ func TestRender(t *testing.T) {
 	}{
 		{
 			name:    "telesto with no token",
-			td:      &telestoconfig.TemplateData{Telesto: &model.Telesto{Name: "rocket"}},
+			td:      &telestoconfig.TemplateData{TokensAvailable: false},
 			wantErr: false,
 		},
 		{
 			name:    "telesto with tokens",
-			td:      &telestoconfig.TemplateData{Telesto: &model.Telesto{Name: "banana", Tokens: []model.Token{{Name: "apple"}}}},
+			td:      &telestoconfig.TemplateData{TokensAvailable: true},
 			wantErr: false,
 		},
 	}

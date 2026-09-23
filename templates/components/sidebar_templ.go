@@ -29,7 +29,7 @@ func Sidebar() templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<aside class=\"w-64 bg-slate-50 border-r border-slate-200 flex flex-col\"><nav class=\"flex-1 py-4\"><ul class=\"space-y-1\"><li><a href=\"/telestos\" class=\"block px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-md mx-2\">Telestos</a></li><li><a href=\"/tokens\" class=\"block px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-md mx-2\">Tokens</a></li><li><a href=\"/billing\" class=\"block px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-md mx-2\">Billing</a></li></ul></nav></aside>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<aside class=\"w-64 bg-slate-50 border-r border-slate-200 flex flex-col\"><nav class=\"flex-1 py-4\"><ul class=\"space-y-1\"><li><a href=\"/telestos\" class=\"block px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-md mx-2\">Telestos</a></li><li><a href=\"/tokens\" class=\"block px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-md mx-2\">Tokens</a></li></ul></nav></aside>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

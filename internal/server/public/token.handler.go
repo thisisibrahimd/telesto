@@ -7,9 +7,9 @@ import (
 	"github.com/gorilla/schema"
 	"github.com/jinzhu/copier"
 	"github.com/mdobak/go-xerrors"
+	"github.com/thisisibrahimd/telesto/internal/model"
 	"github.com/thisisibrahimd/telesto/internal/server/middlewares"
 	"github.com/thisisibrahimd/telesto/internal/server/services"
-	"github.com/thisisibrahimd/telesto/internal/storage/model"
 	"github.com/thisisibrahimd/telesto/internal/token"
 	"github.com/thisisibrahimd/telesto/internal/utils"
 	"github.com/thisisibrahimd/telesto/templates/pages/tokens"
@@ -27,7 +27,7 @@ func newTokenHandler(svcs *services.Services, sd *schema.Decoder) *TokenHandler 
 func (h *TokenHandler) GetTokens(w http.ResponseWriter, r *http.Request) {
 	userID := middlewares.GetUserID(r.Context())
 
-	userTokens, err := h.svcs.Token.ByUser(userID).GetAll(r.Context())
+	userTokens, err := h.svcs.Token.ByUser(userID).List(r.Context())
 	if err != nil {
 		slog.Error("failed to retrive tokens", slog.Any("error", err))
 	}
@@ -57,7 +57,7 @@ func (h *TokenHandler) GetToken(w http.ResponseWriter, r *http.Request) {
 	tokenModel.TelestoID = userToken.TelestoID
 	tokens.Show(*tokenModel).Render(r.Context(), w)
 
-	if err := h.svcs.Token.ByUser(userID).(services.ITokenService).MarkSeen(r.Context(), tokenID); err != nil {
+	if err := h.svcs.Token.ByUser(userID).MarkSeen(r.Context(), tokenID); err != nil {
 		slog.Error("error marking token as seen", slog.Any("error", err))
 	}
 }
@@ -98,7 +98,7 @@ func (h *TokenHandler) NewTokenSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	t := token.NewToken()
+	t := token.NewTokenString()
 	newToken := &model.Token{
 		Name:      newTokenForm.Name,
 		UserID:    userID,

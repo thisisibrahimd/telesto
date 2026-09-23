@@ -4,31 +4,28 @@ import (
 	"context"
 
 	"github.com/mdobak/go-xerrors"
-	"github.com/thisisibrahimd/telesto/internal/storage/model"
-	"github.com/thisisibrahimd/telesto/internal/storage/repository"
+	"github.com/thisisibrahimd/telesto/internal/model"
+	"github.com/thisisibrahimd/telesto/internal/storage"
 )
 
-type ITokenService interface {
-	Service[model.Token]
-	ServiceByUser[model.Token]
-	ServiceByTelesto[model.Token]
-	MarkSeen(ctx context.Context, id string) error
-}
-
 type TokenService struct {
-	repo repository.Repo[model.Token]
+	sto *storage.Storage
 }
 
-func (s *TokenService) ByUser(id string) Service[model.Token] {
-	return &TokenService{repo: s.repo.(repository.RepoByUser[model.Token]).ByUser(id)}
+func (s *TokenService) ByUser(id string) *TokenService {
+	return &TokenService{
+		sto: s.sto.ForUser(id),
+	}
 }
 
-func (s *TokenService) ByTelesto(id string) Service[model.Token] {
-	return &TokenService{repo: s.repo.(repository.RepoByTelesto[model.Token]).ByTelesto(id)}
+func (s *TokenService) ByTelesto(id string) *TokenService {
+	return &TokenService{
+		sto: s.sto.ForTelesto(id),
+	}
 }
 
-func (s *TokenService) GetAll(ctx context.Context) ([]*model.Token, error) {
-	tokens, err := s.repo.GetAll(ctx)
+func (s *TokenService) List(ctx context.Context) ([]*model.Token, error) {
+	tokens, err := s.sto.GetTokens(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +34,7 @@ func (s *TokenService) GetAll(ctx context.Context) ([]*model.Token, error) {
 }
 
 func (s *TokenService) Get(ctx context.Context, id string) (*model.Token, error) {
-	telesto, err := s.repo.Get(ctx, id)
+	telesto, err := s.sto.GetToken(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -46,12 +43,12 @@ func (s *TokenService) Get(ctx context.Context, id string) (*model.Token, error)
 }
 
 func (s *TokenService) MarkSeen(ctx context.Context, id string) error {
-	token, err := s.Get(ctx, id)
+	token, err := s.sto.GetToken(ctx, id)
 	if err != nil {
 		return err
 	}
 	token.Seen = true
-	if _, err = s.repo.(repository.ITokenRepo).MarkSeen(ctx, id); err != nil {
+	if err = s.sto.MarkTokenSeen(ctx, id); err != nil {
 		return xerrors.New("error marking token as seen")
 	}
 
@@ -59,11 +56,11 @@ func (s *TokenService) MarkSeen(ctx context.Context, id string) error {
 }
 
 func (s *TokenService) Create(ctx context.Context, t *model.Token) error {
-	return s.repo.New(ctx, t)
+	return s.sto.CreateToken(ctx, t)
 }
 
 func (s *TokenService) Update(ctx context.Context, id string, t *model.Token) error {
-	if _, err := s.repo.Edit(ctx, id, t); err != nil {
+	if err := s.sto.UpdateToken(ctx, id, t); err != nil {
 		return err
 	}
 
@@ -71,12 +68,12 @@ func (s *TokenService) Update(ctx context.Context, id string, t *model.Token) er
 }
 
 func (s *TokenService) Delete(ctx context.Context, id string) error {
-	if _, err := s.repo.Delete(ctx, id); err != nil {
+	if err := s.sto.DeleteToken(ctx, id); err != nil {
 		return err
 	}
 	return nil
 }
 
-func newTokenService(repo repository.Repo[model.Token]) ITokenService {
-	return &TokenService{repo: repo}
+func newTokenService(sto *storage.Storage) *TokenService {
+	return &TokenService{sto: sto}
 }

@@ -75,6 +75,7 @@ gen-libsonnet-libraries:
 	k8s-gen generate k8s --config "./deploy/lib/grafana-crds/config.json"
 	k8s-gen generate k8s --config "./deploy/lib/prometheus-operator-crds/config.json"
 	k8s-gen generate k8s --config "./deploy/lib/opentelemetry-operator-crds/config.json"
+	k8s-gen generate k8s --config "./deploy/lib/trust-manager-crds/config.json"
 	
 ## application
 ### go server
@@ -82,13 +83,17 @@ gen-libsonnet-libraries:
 test:
 	go test ./...
 
+.PHONY: test-update-golden
+test-update-golden:
+	go test ./... -update
+
 .PHONY: gen-templates
 gen-templates:
 	find templates -name "*_templ.go" -delete
 	templ generate
 
 .PHONY: build
-build:
+build: gen-templates gen-query
 	goreleaser release --snapshot --clean
 	if [ "$(LOAD_CONTAINER_IMAGE)" = "true" ]; \
 	then \
@@ -171,13 +176,9 @@ sops-decrypt:
 sops-edit:
 	$(SOPS_AGE_KEY_FILE_ENV) sops --edit $(SOPS_FILE)
 
+
 .PHONY: install-local-root-ca
 install-local-root-ca:
 	mkdir -p tmp
 	kubectl get secrets -n cert-manager cert-root-ca-telesto -o json | jq -r '.data.["tls.crt"]' | base64 -d > ./tmp/ca.crt
 	mkcert -install -cert-file ./tmp/ca.crt
-
-## util
-.PHONY: gen-token
-gen-token:
-	openssl rand -hex 32

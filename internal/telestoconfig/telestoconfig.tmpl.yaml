@@ -1,4 +1,13 @@
 exporters:
+  {{ if .Endpoint }}
+  otlp_http:
+    endpoint: {{ .Endpoint }}
+    timeout: 15s
+    {{ if .AuthorizationHeader }}
+    headers:
+      Authorization: {{ .AuthorizationHeader }}
+    {{ end }}
+  {{ end }}
   debug: {}
 extensions:
   bearertokenauth/telestotokenauth:
@@ -28,42 +37,51 @@ service:
       encoding: json
   extensions:
   - health_check
-  {{ if gt (len .Telesto.Tokens) 0 }}
+  {{ if .TokensAvailable }}
   - bearertokenauth/telestotokenauth
   {{ end }}
   pipelines:
     logs:
       exporters:
+      {{ if .Endpoint }}
+      - otlp_http
+      {{ end }}
       - debug
       processors:
       - memory_limiter
       - batch
       receivers:
-      {{ if gt (len .Telesto.Tokens) 0 }}
+      {{ if .TokensAvailable }}
       - otlp/auth
       {{ else }}
       - nop/blocked
       {{ end }}
     metrics:
       exporters:
+      {{ if .Endpoint }}
+      - otlp_http
+      {{ end }}
       - debug
       processors:
       - memory_limiter
       - batch
       receivers:
-      {{ if gt (len .Telesto.Tokens) 0 }}
+      {{ if .TokensAvailable }}
       - otlp/auth
       {{ else }}
       - nop/blocked
       {{ end }}
     traces:
       exporters:
+      {{ if .Endpoint }}
+      - otlp_http
+      {{ end }}
       - debug
       processors:
       - memory_limiter
       - batch
       receivers:
-      {{ if gt (len .Telesto.Tokens) 0 }}
+      {{ if .TokensAvailable }}
       - otlp/auth
       {{ else }}
       - nop/blocked

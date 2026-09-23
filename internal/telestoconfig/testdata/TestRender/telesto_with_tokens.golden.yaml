@@ -1,4 +1,5 @@
 exporters:
+  
   debug: {}
 extensions:
   bearertokenauth/telestotokenauth:
@@ -34,6 +35,7 @@ service:
   pipelines:
     logs:
       exporters:
+      
       - debug
       processors:
       - memory_limiter
@@ -44,6 +46,7 @@ service:
       
     metrics:
       exporters:
+      
       - debug
       processors:
       - memory_limiter
@@ -54,6 +57,7 @@ service:
       
     traces:
       exporters:
+      
       - debug
       processors:
       - memory_limiter
