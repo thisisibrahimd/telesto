@@ -8,7 +8,7 @@
           "subdir": "ksonnet-util"
         }
       },
-      "version": "10b0fbc6f6bffbf774067de9c07982bf8454a211",
+      "version": "74c55e5f503a1f84eb939f7c421e366d04f25961",
       "sum": "0y3AFX9LQSpfWTxWKSwoLgbt0Wc9nnCwhMH2szKzHv0="
     },
     {
@@ -18,7 +18,7 @@
           "subdir": "tanka-util"
         }
       },
-      "version": "10b0fbc6f6bffbf774067de9c07982bf8454a211",
+      "version": "74c55e5f503a1f84eb939f7c421e366d04f25961",
       "sum": "ShSIissXdvCy1izTCDZX6tY7qxCoepE5L+WJ52Hw7ZQ="
     },
     {
@@ -78,7 +78,7 @@
           "subdir": "jsonnet"
         }
       },
-      "version": "90b4943c3ac2846f7b0ad42cf25101b6049c997c",
+      "version": "f3a8b4f2fae7aa51f65887eeec43e64fe7fc6f75",
       "sum": "82UMaK+TTf3u8yaIBAJ85kMPAX3/qGI1SGRWGYkwltw="
     }
   ],
