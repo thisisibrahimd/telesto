@@ -1,5 +1,8 @@
 ENVIRONMENT_NAME?=local
 
+.PHONY: bootstrap
+bootstrap: jb-install charts-vendor gen-libsonnet-libraries
+
 ## jsonnet-bundler
 .PHONY: jb-update
 jb-update:
